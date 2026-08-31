@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Onboarding av ny kunde – BHTN</title>
+<!-- Fargepaletten under (--brand-aubergine/--brand-magenta) er satt til BHTN sin egen
+     merkevare (bhtn.no) — mørk bordeaux + magenta/rosa på cremefarget bunn. -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+:root {
+  --brand-aubergine: #2b1620;
+  --brand-aubergine-700: #1c0d14;
+  --brand-aubergine-300: #7a5866;
+  --brand-magenta: #e0057a;
+  --brand-magenta-700: #b80463;
+  --brand-magenta-100: #fce4ef;
+
+  --fg-1: #2b1620;
+  --fg-2: #6b4a55;
+  --fg-3: #b79aa3;
+
+  --bg-page: #f7ede1;
+  --bg-surface: #ffffff;
+  --bg-surface-2: #f3e7d9;
+
+  --success: #1f8a5b; --success-100: #e6f4ec;
+  --warning: #c98a14; --warning-100: #fbf1d9;
+  --danger: #c4304a; --danger-100: #fbe4e8;
+  --info: #2a6fdb; --info-100: #e3eefb;
+
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 20px; --r-2xl: 24px; --r-pill: 9999px;
+
+  --shadow-2: 0 4px 12px rgba(43,22,32,.08);
+  --shadow-focus: 0 0 0 4px rgba(224,5,122,.20);
+
+  --ease-std: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur: 240ms;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background:
+    radial-gradient(ellipse 800px 300px at 100% -10%, rgba(224,5,122,.10), transparent 60%),
+    radial-gradient(ellipse 700px 280px at -10% 110%, rgba(43,22,32,.06), transparent 60%),
+    var(--bg-page);
+  min-height: 100vh;
+  color: var(--fg-1);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.opk-shell { max-width: 920px; margin: 0 auto; padding: 32px 24px 96px; }
+
+/* Brand header */
+.opk-brand { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+.opk-brand__crumb { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: var(--r-pill); background: #fff; border: 1px solid rgba(43,22,32,.08); font-size: 13px; color: var(--fg-2); }
+.opk-brand__crumb-tag { font-weight: 700; color: var(--fg-1); letter-spacing: .04em; }
+.opk-brand__crumb-sep { opacity: .4; }
+
+/* Hero */
+.opk-hero { margin-bottom: 32px; max-width: 720px; }
+.opk-hero__tag { display:inline-block; font-size: 12px; font-weight:700; letter-spacing: .14em; text-transform: uppercase; color: var(--fg-2); margin-bottom: 12px; }
+.opk-hero__title { font-size: clamp(36px, 5vw, 56px); font-weight: 800; letter-spacing: -.02em; line-height: 1.05; margin: 0 0 12px; color: var(--fg-1); }
+.opk-hero__title em { font-style: italic; color: var(--brand-magenta); font-weight: 700; }
+.opk-hero__sub { font-size: 17px; color: var(--fg-2); max-width: 56ch; margin: 0; }
+
+/* Stepper */
+.opk-stepper { list-style: none; display: flex; gap: 8px; padding: 0; margin: 0 0 18px; flex-wrap: wrap; }
+.opk-stepper__item button { display: inline-flex; align-items: center; gap: 8px; background: transparent; border: 0; cursor: pointer; padding: 0; font: inherit; color: var(--fg-3); }
+.opk-stepper__item.is-done button { color: var(--fg-2); }
+.opk-stepper__item.is-current button { color: var(--fg-1); }
+.opk-stepper__dot { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; background: #efe9e2; color: var(--fg-2); }
+.opk-stepper__item.is-done .opk-stepper__dot { background: var(--brand-aubergine); color: #faf7f4; }
+.opk-stepper__item.is-current .opk-stepper__dot { background: var(--brand-magenta); color: #fff; box-shadow: 0 0 0 4px rgba(224,5,122,.18); }
+.opk-stepper__label { font-size: 13px; font-weight: 600; }
+.opk-stepper__item:not(:last-child)::after { content: ""; display: inline-block; width: 18px; height: 2px; background: #efe9e2; border-radius: 2px; margin: 0 4px; vertical-align: middle; }
+.opk-stepper__item.is-done:not(:last-child)::after { background: var(--brand-aubergine); }
+
+/* Card */
+.opk-card { background: #fff; border: 1px solid rgba(43,22,32,.08); border-radius: var(--r-2xl); padding: 32px; box-shadow: var(--shadow-2); }
+
+/* Section head */
+.opk-section-head { margin-bottom: 24px; }
+.opk-section-head__tag { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--fg-2); margin-bottom: 8px; }
+.opk-section-head__title { margin: 0 0 6px; font-size: 28px; font-weight: 800; letter-spacing: -.015em; color: var(--fg-1); }
+.opk-section-head__sub { margin: 0; color: var(--fg-2); font-size: 15px; }
+.opk-subhead { font-size: 14px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--fg-2); margin: 24px 0 12px; }
+.opk-subhead:first-of-type { margin-top: 8px; }
+
+/* Grid + Field */
+.opk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 640px) { .opk-grid { grid-template-columns: 1fr; } }
+.opk-field { display: flex; flex-direction: column; gap: 6px; }
+.opk-field--center { align-items: center; text-align: center; }
+.opk-field__label { font-size: 13px; font-weight: 600; color: var(--fg-1); }
+.opk-field__hint { font-size: 12px; color: var(--fg-2); }
+.opk-field__hint--err { color: var(--danger); }
+
+/* Inputs */
+.opk-input { display: flex; align-items: center; background: #fff; border: 1.5px solid #e6dfd8; border-radius: var(--r-md); padding: 0 12px; height: 44px; transition: border-color var(--dur) var(--ease-std), box-shadow var(--dur) var(--ease-std); }
+.opk-input:focus-within { border-color: var(--brand-magenta); box-shadow: var(--shadow-focus); }
+.opk-input input, .opk-input select { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; color: var(--fg-1); height: 100%; outline: none; padding: 0; }
+.opk-input input::placeholder { color: var(--fg-3); }
+.opk-input__prefix { color: var(--fg-2); font-size: 13px; padding-right: 8px; border-right: 1px solid #efe9e2; margin-right: 8px; height: 22px; display: inline-flex; align-items: center; }
+.opk-input--select { position: relative; padding-right: 36px; cursor: pointer; }
+.opk-input--select select { appearance: none; -webkit-appearance: none; cursor: pointer; }
+.opk-input__chev { position: absolute; right: 12px; pointer-events: none; color: var(--fg-2); }
+.opk-textarea { width: 100%; background: #fff; border: 1.5px solid #e6dfd8; border-radius: var(--r-md); padding: 10px 12px; font: inherit; color: var(--fg-1); resize: vertical; transition: border-color var(--dur) var(--ease-std), box-shadow var(--dur) var(--ease-std); }
+.opk-textarea:focus { outline: none; border-color: var(--brand-magenta); box-shadow: var(--shadow-focus); }
+.opk-textarea::placeholder { color: var(--fg-3); }
+
+/* Segmented */
+.opk-seg { display: flex; width: 100%; background: #f3eee8; border-radius: var(--r-pill); padding: 4px; gap: 2px; flex-wrap: wrap; }
+.opk-seg__btn { flex: 1 1 0; text-align: center; background: transparent; border: 0; padding: 14px 16px; border-radius: var(--r-pill); font: inherit; font-weight: 600; font-size: 15px; color: var(--fg-2); cursor: pointer; transition: background var(--dur) var(--ease-std), color var(--dur) var(--ease-std); }
+.opk-seg__btn:hover { color: var(--fg-1); }
+.opk-seg__btn.is-on { background: var(--brand-aubergine); color: #faf7f4; }
+
+/* Radio cards */
+.opk-radiocards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+@media (max-width: 640px) { .opk-radiocards { grid-template-columns: 1fr; } }
+.opk-radiocard { text-align: left; padding: 16px; gap: 12px; display: flex; align-items: flex-start; background: #fff; border: 1.5px solid #e6dfd8; border-radius: var(--r-lg); font: inherit; color: var(--fg-1); cursor: pointer; transition: border-color var(--dur) var(--ease-std), box-shadow var(--dur) var(--ease-std), background var(--dur) var(--ease-std); }
+.opk-radiocard:hover { border-color: var(--fg-3); }
+.opk-radiocard.is-on { border-color: var(--brand-magenta); background: var(--brand-magenta-100); box-shadow: var(--shadow-focus); }
+.opk-radiocard__dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #d6ccc1; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
+.opk-radiocard__dot span { width: 8px; height: 8px; border-radius: 50%; background: transparent; transition: background var(--dur) var(--ease-std); }
+.opk-radiocard.is-on .opk-radiocard__dot { border-color: var(--brand-magenta); }
+.opk-radiocard.is-on .opk-radiocard__dot span { background: var(--brand-magenta); }
+.opk-radiocard__body { display: flex; flex-direction: column; gap: 4px; }
+.opk-radiocard__title { font-weight: 700; font-size: 15px; }
+.opk-radiocard__hint { font-size: 12px; color: var(--fg-2); }
+
+/* Buttons */
+.opk-btn { display: inline-flex; align-items: center; gap: 8px; font: inherit; font-weight: 600; font-size: 15px; padding: 12px 20px; border-radius: var(--r-pill); border: 0; cursor: pointer; transition: all var(--dur) var(--ease-std); }
+.opk-btn:active { transform: scale(.98); }
+.opk-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+.opk-btn--primary { background: var(--brand-aubergine); color: #faf7f4; }
+.opk-btn--primary:hover:not(:disabled) { background: var(--brand-aubergine-700); }
+.opk-btn--magenta { background: var(--brand-magenta); color: #fff; box-shadow: 0 8px 20px rgba(224,5,122,.30); }
+.opk-btn--magenta:hover:not(:disabled) { background: var(--brand-magenta-700); }
+.opk-btn--ghost { background: transparent; color: var(--brand-aubergine); }
+.opk-btn--ghost:hover:not(:disabled) { background: rgba(43,22,32,.06); }
+.opk-btn__slack { width: 22px; height: 22px; border-radius: 6px; background: rgba(255,255,255,.18); display: inline-flex; align-items: center; justify-content: center; }
+
+.opk-form__nav { display: flex; justify-content: space-between; align-items: center; margin-top: 28px; padding-top: 20px; border-top: 1px solid #efe9e2; }
+
+/* Slack preview */
+.slack { background: #fff; border: 1px solid #e0dee3; border-radius: 12px; overflow: hidden; font-size: 14px; }
+.slack__head { padding: 10px 16px; border-bottom: 1px solid #ececef; display: flex; justify-content: space-between; align-items: center; background: #f8f8f8; }
+.slack__channel { font-weight: 700; color: #1d1c1d; display: inline-flex; align-items: center; gap: 4px; }
+.slack__hash { color: #616061; font-weight: 500; }
+.slack__sub { color: #616061; font-size: 12px; }
+.slack__msg { display: flex; gap: 12px; padding: 16px; }
+.slack__avatar { width: 36px; height: 36px; border-radius: 6px; background: #faf7f4; flex-shrink: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 4px; }
+.slack__avatar img { width: 100%; height: auto; object-fit: contain; }
+.slack__body { flex: 1; min-width: 0; color: #1d1c1d; }
+.slack__author { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 14px; }
+.slack__bot { background: #ddd; color: #616061; font-size: 10px; font-weight: 700; padding: 1px 4px; border-radius: 3px; letter-spacing: .04em; }
+.slack__time { color: #616061; font-size: 12px; font-weight: 400; }
+.slack__attachment { border-left: 4px solid #e0057a; padding: 12px 14px; background: #fafafa; border-radius: 0 6px 6px 0; }
+.slack__title { font-weight: 700; font-size: 15px; color: #1d1c1d; margin-bottom: 10px; }
+.slack__pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.slack-pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.slack-pill--neutral { background: #ececef; color: #1d1c1d; }
+.slack-pill--aubergine { background: #2b1620; color: #f7ede1; }
+.slack-pill--magenta { background: #fce4ef; color: #b80463; }
+.slack-pill--success { background: #e6f4ec; color: #1f8a5b; }
+.slack-pill--warning { background: #fbf1d9; color: #7a530b; }
+.slack-pill--danger { background: #fbe4e8; color: #c4304a; }
+.slack-pill--info { background: #e3eefb; color: #2a6fdb; }
+.slack__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; }
+@media (max-width: 640px) { .slack__grid { grid-template-columns: 1fr; } }
+.slack-field__label { font-size: 11px; font-weight: 700; color: #616061; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px; }
+.slack-field__value { font-size: 14px; color: #1d1c1d; word-break: break-word; }
+.slack-field__value a { color: #1264a3; }
+.slack-mono { font-family: var(--font-mono); font-size: 12.5px; }
+.slack-empty { color: #b6b3b9; font-style: normal; }
+.slack__actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.slack__btn { background: #fff; border: 1px solid #e0dee3; border-radius: 4px; padding: 6px 12px; font: inherit; font-size: 13px; font-weight: 600; color: #1d1c1d; cursor: pointer; }
+.slack__btn:hover { background: #f8f8f8; }
+
+/* Confirmation */
+.opk-confirm { position: relative; background: #fff; border-radius: var(--r-2xl); padding: 48px 32px; text-align: center; box-shadow: var(--shadow-2); border: 1px solid rgba(43,22,32,.08); }
+.opk-confirm__actions { display: inline-flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.opk-confirm__emoji { font-size: 64px; margin-bottom: 12px; animation: opkBounce 600ms cubic-bezier(0.16, 1, 0.3, 1); }
+.opk-confirm__title { font-size: 36px; font-weight: 800; letter-spacing: -.015em; margin: 0 0 8px; }
+.opk-confirm__sub { color: var(--fg-2); margin: 0 0 28px; }
+.opk-confirm__sub code { background: var(--brand-magenta-100); color: var(--brand-magenta-700); padding: 2px 8px; border-radius: 6px; font-family: var(--font-mono); font-size: 13px; }
+.opk-confirm__steps { max-width: 480px; margin: 0 auto 28px; text-align: left; display: flex; flex-direction: column; gap: 8px; }
+.opk-confirm__step { display: grid; grid-template-columns: 32px 1fr 24px; align-items: center; gap: 12px; padding: 14px 16px; background: #fafafa; border-radius: var(--r-lg); border: 1px solid #efe9e2; }
+.opk-confirm__step--pending { opacity: .55; }
+.opk-confirm__step-num { width: 28px; height: 28px; border-radius: 50%; background: #efe9e2; color: var(--fg-2); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+.opk-confirm__step-title { font-weight: 700; font-size: 14px; }
+.opk-confirm__step-sub { font-size: 12px; color: var(--fg-2); }
+.opk-confirm__check { color: var(--success); font-weight: 700; font-size: 18px; }
+
+.opk-email-draft { text-align: left; background: #fafafa; border: 1px solid #efe9e2; border-radius: var(--r-lg); padding: 20px; margin: 0 auto 24px; max-width: 480px; }
+.opk-email-draft__label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-2); margin-bottom: 10px; }
+.opk-email-draft__subject { font-size: 13px; margin-bottom: 8px; }
+.opk-email-draft__body { font-family: var(--font-sans); font-size: 13px; white-space: pre-wrap; color: var(--fg-1); background: #fff; border: 1px solid #efe9e2; border-radius: 10px; padding: 12px; margin: 0 0 12px; }
+
+.opk-brreg-candidates { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; max-height: 280px; overflow-y: auto; }
+.opk-brreg-candidate { text-align: left; padding: 10px 12px; border-radius: var(--r-md); border: 1.5px solid #e6dfd8; background: #fff; cursor: pointer; display: flex; flex-direction: column; gap: 2px; font: inherit; }
+.opk-brreg-candidate:hover { border-color: var(--brand-magenta); background: var(--brand-magenta-100); }
+.opk-brreg-candidate__name { font-weight: 700; font-size: 14px; color: var(--fg-1); }
+.opk-brreg-candidate__meta { font-size: 12px; color: var(--fg-2); }
+.opk-confirm__auto { font-size: 12px; color: var(--fg-2); margin-top: 12px; }
+
+@keyframes opkBounce { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.1); } 100% { transform: scale(1); opacity: 1; } }
+
+/* Decorative */
+.opk-deco { position: fixed; pointer-events: none; opacity: .9; }
+.opk-deco--star { top: 80px; right: 6%; width: 38px; height: 38px; color: var(--brand-magenta); animation: opkFloat 4s ease-in-out infinite; }
+.opk-deco--cloud { bottom: 10%; left: 4%; width: 60px; color: rgba(43,22,32,.08); animation: opkFloat 6s ease-in-out infinite reverse; }
+@keyframes opkFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@media (max-width: 800px) { .opk-deco { display: none; } }
+
+.opk-error-banner { margin-top: 16px; padding: 12px 16px; border-radius: 12px; background: var(--danger-100); color: var(--danger); font-size: 14px; font-weight: 500; border: 1px solid var(--danger); }
+</style>
+</head>
+<body>
+
+<svg class="opk-deco opk-deco--star" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0l2.4 8.4L22.8 11l-7.2 4.2L18 24l-6-5.4L6 24l2.4-8.8L1.2 11l8.4-2.6L12 0z"/></svg>
+<svg class="opk-deco opk-deco--cloud" viewBox="0 0 64 32" fill="currentColor"><path d="M16 16a8 8 0 0 1 16 0h2a8 8 0 0 1 0 16H14a8 8 0 0 1 2-16z"/></svg>
+
+<div id="root"></div>
+
+<script type="text/plain" id="app-source">
+const { useState, useEffect } = React;
+
+const SLACK_ENDPOINT = "https://din-worker.din-konto.workers.dev"; // TODO: URL-en til din deployede worker
+const CHANNEL = "#opk-bht";
+
+const STEPS = [
+  { id: "company",  label: "Selskap",       emoji: "🏢" },
+  { id: "contacts", label: "Kontakter",     emoji: "👋" },
+  { id: "avtale",   label: "Avtale",        emoji: "🩺" },
+  { id: "review",   label: "Slack-preview", emoji: "⚡️" },
+];
+
+const INVOICE_FREQ = ["Månedlig", "Kvartalsvis", "Halvårlig", "Årlig"];
+// TODO: fornavn+etternavn på ansatte som skal kunne velges som interne kontaktpersoner i skjemaet.
+const TEAM_PEOPLE = [
+  "Ola Nordmann", "Kari Nordmann",
+];
+
+function getToday() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+const emptyData = {
+  companyName: "", orgnr: "", orgForm: "", brregUrl: "",
+  clientContact: "", clientPhone: "", clientEmail: "",
+  opkContact: "",
+  contractDate: getToday(), invoiceDate: "", invoiceFrequency: "",
+  fee: "", customerCount: "1", otherInfo: "",
+};
+
+/* ---------- Brand ---------- */
+// BHTN sin logo er en enkel "+" i magenta pluss ordmerket "BHTN" — gjenskapt som SVG/tekst
+// under, i tråd med bhtn.no. Bytt gjerne ut med en ekte logofil (SVG/PNG) i frontend/assets/
+// og bruk <img> igjen, hvis dere har en du vil ha pixel-nøyaktig.
+const BhtnMark = ({ size = 22 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <rect width="24" height="24" rx="7" fill="var(--brand-magenta)" />
+    <path d="M12 6v12M6 12h12" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" />
+  </svg>
+);
+
+const BhtnLogo = () => (
+  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+    <BhtnMark />
+    <span style={{ fontWeight: 800, fontSize: 20, letterSpacing: "-.01em", color: "var(--fg-1)" }}>BHTN</span>
+  </span>
+);
+
+const Brand = ({ step, totalSteps }) => (
+  <header className="opk-brand">
+    <a className="opk-brand__logo" href="https://bhtn.no">
+      <BhtnLogo />
+    </a>
+    <div className="opk-brand__crumb">
+      <span className="opk-brand__crumb-tag">⚡️ Onboarding</span>
+      <span className="opk-brand__crumb-sep">·</span>
+      <span className="opk-brand__crumb-step">Steg {step} av {totalSteps}</span>
+    </div>
+  </header>
+);
+
+/* ---------- Field kit ---------- */
+const Field = ({ label, hint, error, children, span = 1, center = false }) => (
+  <label className={`opk-field ${center ? "opk-field--center" : ""}`} style={{ gridColumn: `span ${span}` }}>
+    <span className="opk-field__label">{label}</span>
+    {children}
+    {hint && !error && <span className="opk-field__hint">{hint}</span>}
+    {error && <span className="opk-field__hint opk-field__hint--err">{error}</span>}
+  </label>
+);
+
+const TextInput = ({ value, onChange, placeholder, type = "text", prefix }) => (
+  <div className={`opk-input ${prefix ? "opk-input--with-prefix" : ""}`}>
+    {prefix && <span className="opk-input__prefix">{prefix}</span>}
+    <input
+      type={type}
+      value={value || ""}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+    />
+  </div>
+);
+
+const Textarea = ({ value, onChange, placeholder, rows = 3 }) => (
+  <textarea
+    className="opk-textarea"
+    value={value || ""}
+    onChange={(e) => onChange(e.target.value)}
+    placeholder={placeholder}
+    rows={rows}
+  />
+);
+
+const Select = ({ value, onChange, options }) => (
+  <div className="opk-input opk-input--select">
+    <select value={value || ""} onChange={(e) => onChange(e.target.value)}>
+      <option value="" disabled>Velg…</option>
+      {options.map((o) => (
+        <option key={o} value={o}>{o}</option>
+      ))}
+    </select>
+    <svg className="opk-input__chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+  </div>
+);
+
+const Segmented = ({ value, onChange, options, fullWidth = false }) => (
+  <div className={`opk-seg ${fullWidth ? "opk-seg--full" : ""}`} role="radiogroup">
+    {options.map((o) => (
+      <button
+        key={o.value}
+        role="radio"
+        aria-checked={value === o.value}
+        className={`opk-seg__btn ${value === o.value ? "is-on" : ""}`}
+        onClick={() => onChange(o.value)}
+        type="button"
+      >
+        {o.label}
+      </button>
+    ))}
+  </div>
+);
+
+const RadioCards = ({ value, onChange, options }) => (
+  <div className="opk-radiocards">
+    {options.map((o) => (
+      <button
+        key={o.value}
+        type="button"
+        className={`opk-radiocard ${value === o.value ? "is-on" : ""}`}
+        onClick={() => onChange(o.value)}
+        aria-pressed={value === o.value}
+      >
+        <span className="opk-radiocard__dot"><span /></span>
+        <span className="opk-radiocard__body">
+          <span className="opk-radiocard__title">{o.label}</span>
+          {o.hint && <span className="opk-radiocard__hint">{o.hint}</span>}
+        </span>
+      </button>
+    ))}
+  </div>
+);
+
+/* ---------- Slack preview ---------- */
+const SlackRow = ({ label, children }) => (
+  <div className="slack-field">
+    <div className="slack-field__label">{label}</div>
+    <div className="slack-field__value">{children || <em className="slack-empty">—</em>}</div>
+  </div>
+);
+
+const Pill = ({ tone = "neutral", children }) => (
+  <span className={`slack-pill slack-pill--${tone}`}>{children}</span>
+);
+
+const SlackPreview = ({ data, channel = CHANNEL }) => {
+  return (
+    <div className="slack">
+      <div className="slack__head">
+        <div className="slack__channel">
+          <span className="slack__hash">#</span>
+          <span>{channel.replace(/^#/, "")}</span>
+        </div>
+        <div className="slack__sub">Onboarding-bot · postet nå</div>
+      </div>
+      <div className="slack__msg">
+        <div className="slack__avatar" aria-hidden="true">
+          <BhtnMark size={28} />
+        </div>
+        <div className="slack__body">
+          <div className="slack__author">
+            <strong>Onboarding</strong>
+            <span className="slack__bot">APP</span>
+            <span className="slack__time">nå</span>
+          </div>
+          <div className="slack__attachment">
+            <div className="slack__title">🩺 Ny kunde: {data.companyName || "Ukjent selskap"}</div>
+            <div className="slack__pills">
+              {data.invoiceFrequency && <Pill tone="aubergine">Fakturering: {data.invoiceFrequency}</Pill>}
+              {data.customerCount && <Pill tone="magenta">{data.customerCount} kunde{data.customerCount === "1" ? "" : "r"}</Pill>}
+            </div>
+            <div className="slack__grid">
+              <SlackRow label="Org.nr">{data.orgnr}</SlackRow>
+              <SlackRow label="Brreg/Proff">
+                {data.brregUrl ? <a href={data.brregUrl}>{data.brregUrl}</a> : null}
+              </SlackRow>
+              <SlackRow label="Avtaledato">{data.contractDate}</SlackRow>
+              <SlackRow label="Fakturering">{data.invoiceDate}</SlackRow>
+              <SlackRow label="Fakt. frekvens">{data.invoiceFrequency}</SlackRow>
+              <SlackRow label="Sum">{data.fee ? `kr ${Number(data.fee).toLocaleString("nb-NO")}` : null}</SlackRow>
+              <SlackRow label="Antall kunder">{data.customerCount}</SlackRow>
+              <SlackRow label="Kontakt hos kunde">
+                {data.clientContact ? (
+                  <React.Fragment>
+                    {data.clientContact}<br />
+                    {data.clientEmail && <span className="slack-mono">{data.clientEmail}</span>}
+                    {data.clientPhone && <React.Fragment> · <span className="slack-mono">{data.clientPhone}</span></React.Fragment>}
+                  </React.Fragment>
+                ) : null}
+              </SlackRow>
+              <SlackRow label="Intern kontaktperson">{data.opkContact}</SlackRow>
+            </div>
+            {data.otherInfo && (
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #ececef" }}>
+                <div className="slack-field__label">Annen info</div>
+                <div className="slack-field__value" style={{ whiteSpace: "pre-wrap" }}>{data.otherInfo}</div>
+              </div>
+            )}
+          </div>
+          <div className="slack__actions">
+            <button className="slack__btn" type="button">📋 Kopier</button>
+            <button className="slack__btn" type="button">✅ Overfør til CRM</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ---------- Welcome email draft ---------- */
+// TODO: fornavn på ansatte som skal ha kopi av velkomstmailen (fornavn@bhtn.no), og
+// domenet e-postadressene skal bygges med.
+const STAFF_CC_NAMES = [];
+const STAFF_CC_DOMAIN = "bhtn.no";
+const staffCcAddresses = () => STAFF_CC_NAMES.map((n) => `${n.toLowerCase()}@${STAFF_CC_DOMAIN}`);
+
+// TODO: teksten under er et eksempel — skriv om innholdet i avsnittene til det som passer din
+// bransje/virksomhet. Adresse/telefon i signaturblokken under er fortsatt plassholdere —
+// bytt ut med BHTNs faktiske kontaktinfo. VIKTIG: signaturblokken (fra og med "BHTN") må
+// starte med nøyaktig samme tekst som signatureMarker i worker/src/index.js
+// (sendWelcomeEmail), ellers klipper ikke HTML-konverteringen riktig sted.
+const buildWelcomeEmail = (data) => {
+  const contactFirstName = (data.clientContact || "").split(" ")[0] || "der";
+  const opkContactFirstName = (data.opkContact || "").split(" ")[0] || "din kontaktperson";
+  const subject = `Velkommen som kunde, ${data.companyName || ""}!`;
+
+  let startSentence = "Vi starter opp samarbeidet";
+  if (data.contractDate) startSentence += ` fra ${data.contractDate}`;
+  startSentence += ".";
+
+  const body = `Hei ${contactFirstName},
+
+
+Velkommen som kunde!
+
+Vi gleder oss til å komme i gang og til et godt samarbeid med ${data.companyName || "dere"}.
+
+
+${opkContactFirstName} vil ta seg av den løpende oppfølgingen.
+
+Dersom dere har spørsmål, kan dere ta kontakt med ${opkContactFirstName}. ${startSentence}
+
+Vi sørger for at overgangen og oppstarten blir så enkel som mulig for dere. Vi ser frem til et godt samarbeid!
+
+Ha en fin dag videre.
+
+
+
+Med vennlig hilsen oss i teamet
+
+BHTN
+Gateadresse 1, 0000 Sted
+Tlf: 00 00 00 00
+post@bhtn.no
+https://bhtn.no/`;
+  return { subject, body };
+};
+
+/* ---------- Confirmation ---------- */
+const AUTO_RESET_SECONDS = 45;
+
+const Confirmation = ({ companyName, data, channel, onReset }) => {
+  const [secondsLeft, setSecondsLeft] = useState(AUTO_RESET_SECONDS);
+  const [copied, setCopied] = useState(false);
+  const [emailStatus, setEmailStatus] = useState("idle"); // idle | sending | sent | error
+  const [emailError, setEmailError] = useState("");
+  const email = buildWelcomeEmail(data || {});
+  const canSendEmail = Boolean(data && data.clientEmail);
+
+  useEffect(() => {
+    if (secondsLeft <= 0) {
+      onReset();
+      return;
+    }
+    if (emailStatus === "sending") return;
+    const t = setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [secondsLeft, emailStatus]);
+
+  const copyEmail = () => {
+    const text = `Emne: ${email.subject}\n\n${email.body}`;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const sendEmail = async () => {
+    setEmailStatus("sending");
+    setEmailError("");
+    try {
+      const res = await fetch(SLACK_ENDPOINT + "/welcome-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: data.clientEmail, cc: staffCcAddresses(), subject: email.subject, body: email.body }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) throw new Error(json.error || `HTTP ${res.status}`);
+      setEmailStatus("sent");
+    } catch (e) {
+      setEmailStatus("error");
+      setEmailError(e.message || "Ukjent feil");
+    }
+  };
+
+  return (
+    <div className="opk-confirm">
+      <div className="opk-confirm__emoji">🩺</div>
+      <h2 className="opk-confirm__title">Sendt til Slack!</h2>
+      <p className="opk-confirm__sub">
+        <strong>{companyName}</strong> er postet i <code>{channel}</code>.
+        Oppdragsansvarlig får ping nå.
+      </p>
+      <div className="opk-confirm__steps">
+        <div className="opk-confirm__step">
+          <span className="opk-confirm__step-num">1</span>
+          <div>
+            <div className="opk-confirm__step-title">Slack-melding sendt</div>
+            <div className="opk-confirm__step-sub">Teamet ser den i {channel}</div>
+          </div>
+          <span className="opk-confirm__check">✓</span>
+        </div>
+        <div className="opk-confirm__step opk-confirm__step--pending">
+          <span className="opk-confirm__step-num">2</span>
+          <div>
+            <div className="opk-confirm__step-title">Kunde opprettes i Tripletex</div>
+            <div className="opk-confirm__step-sub">Kommer snart — ikke bygget ennå</div>
+          </div>
+        </div>
+        <div className="opk-confirm__step">
+          <span className="opk-confirm__step-num">3</span>
+          <div>
+            <div className="opk-confirm__step-title">Velkomstmail til kunden</div>
+            <div className="opk-confirm__step-sub">
+              {emailStatus === "sent" ? `Lagt i utkast-mappen ✓` : "Se over utkastet under, og lagre som utkast eller kopier"}
+            </div>
+          </div>
+          {emailStatus === "sent" && <span className="opk-confirm__check">✓</span>}
+        </div>
+      </div>
+
+      <div className="opk-email-draft">
+        <div className="opk-email-draft__label">✉️ Velkomstmail — utkast</div>
+        <div className="opk-email-draft__subject"><strong>Til:</strong> {data && data.clientEmail ? data.clientEmail : "(ingen e-post registrert)"}</div>
+        <div className="opk-email-draft__subject"><strong>Kopi:</strong> {staffCcAddresses().join(", ")}</div>
+        <div className="opk-email-draft__subject"><strong>Emne:</strong> {email.subject}</div>
+        <pre className="opk-email-draft__body">{email.body}</pre>
+        {emailStatus === "error" && <div className="opk-error-banner" style={{marginTop:0, marginBottom:12}}>Klarte ikke å lagre utkast: {emailError}</div>}
+        <div style={{display:"flex", gap:8, flexWrap:"wrap"}}>
+          <button type="button" className="opk-btn opk-btn--ghost" onClick={copyEmail}>
+            {copied ? "✓ Kopiert!" : "📋 Kopier e-post"}
+          </button>
+          <button
+            type="button"
+            className="opk-btn opk-btn--magenta"
+            onClick={sendEmail}
+            disabled={!canSendEmail || emailStatus === "sending" || emailStatus === "sent"}
+            title={!canSendEmail ? "Mangler e-postadresse på kunden" : undefined}
+          >
+            {emailStatus === "sending" ? "Lagrer utkast…" : emailStatus === "sent" ? "✓ Lagret som utkast!" : "📝 Lagre som utkast"}
+          </button>
+        </div>
+      </div>
+
+      <div className="opk-confirm__actions">
+        <button className="opk-btn opk-btn--primary" type="button" onClick={onReset}>Onboarde en ny kunde nå</button>
+      </div>
+      <p className="opk-confirm__auto">Går automatisk tilbake til skjemaet om {secondsLeft}s…</p>
+    </div>
+  );
+};
+
+/* ---------- Onboarding form ---------- */
+const formatNok = (raw) => {
+  const digits = String(raw ?? "").replace(/\D/g, "");
+  return digits ? Number(digits).toLocaleString("nb-NO") : "";
+};
+const unformatNok = (s) => String(s || "").replace(/\D/g, "");
+
+const Stepper = ({ step, setStep }) => (
+  <ol className="opk-stepper" role="list">
+    {STEPS.map((s, i) => (
+      <li key={s.id} className={`opk-stepper__item ${i === step ? "is-current" : ""} ${i < step ? "is-done" : ""}`}>
+        <button type="button" onClick={() => setStep(i)}>
+          <span className="opk-stepper__dot">{i < step ? "✓" : i + 1}</span>
+          <span className="opk-stepper__label">{s.label}</span>
+        </button>
+      </li>
+    ))}
+  </ol>
+);
+
+const SectionHead = ({ tag, title, sub }) => (
+  <header className="opk-section-head">
+    <span className="opk-section-head__tag">{tag}</span>
+    <h2 className="opk-section-head__title">{title}</h2>
+    {sub && <p className="opk-section-head__sub">{sub}</p>}
+  </header>
+);
+
+const StepCompany = ({ data, update }) => {
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("idle"); // idle | searching | choosing | loading | success | error
+  const [errorMsg, setErrorMsg] = useState("");
+  const [candidates, setCandidates] = useState([]);
+  const [lookupInfo, setLookupInfo] = useState(null);
+
+  const runLookupForOrgnr = async (cleaned) => {
+    setStatus("loading");
+    setErrorMsg("");
+    try {
+      const res = await fetch(`${SLACK_ENDPOINT}/lookup?orgnr=${cleaned}`);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) throw new Error(json.error || `HTTP ${res.status}`);
+
+      update("companyName")(json.name || "");
+      update("orgnr")(cleaned);
+      update("orgForm")(json.orgForm || "");
+      update("brregUrl")(json.brregUrl || "");
+      if (json.dagligLeder) update("clientContact")(json.dagligLeder);
+      if (json.companyEmail) update("clientEmail")(json.companyEmail);
+      if (json.companyPhone) update("clientPhone")(json.companyPhone);
+      setLookupInfo(json);
+      setCandidates([]);
+      setStatus("success");
+    } catch (e) {
+      setStatus("error");
+      setErrorMsg(e.message || "Klarte ikke å hente fra Brreg");
+    }
+  };
+
+  const runSearch = async () => {
+    const trimmed = query.trim();
+    const digitsOnly = trimmed.replace(/[\s-]/g, "");
+    if (/^\d{9}$/.test(digitsOnly)) {
+      return runLookupForOrgnr(digitsOnly);
+    }
+    if (trimmed.length < 2) {
+      setStatus("error");
+      setErrorMsg("Skriv minst 2 tegn, eller et 9-sifret organisasjonsnummer");
+      return;
+    }
+    setStatus("searching");
+    setErrorMsg("");
+    setCandidates([]);
+    try {
+      const res = await fetch(`${SLACK_ENDPOINT}/search?navn=${encodeURIComponent(trimmed)}`);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) throw new Error(json.error || `HTTP ${res.status}`);
+      if (!json.results.length) {
+        setStatus("error");
+        setErrorMsg("Fant ingen treff i Brreg");
+        return;
+      }
+      const exactMatch = json.results.find((r) => r.name && r.name.toLowerCase() === trimmed.toLowerCase());
+      if (json.results.length === 1 || exactMatch) {
+        return runLookupForOrgnr((exactMatch || json.results[0]).orgnr);
+      }
+      setCandidates(json.results);
+      setStatus("choosing");
+    } catch (e) {
+      setStatus("error");
+      setErrorMsg(e.message || "Klarte ikke å søke i Brreg");
+    }
+  };
+
+  return (
+    <React.Fragment>
+      <SectionHead tag="🏢 Selskap" title="Hvem skal vi onboarde?" sub="Det vi trenger for å sette opp den nye kunden." />
+      <div className="opk-grid">
+        <Field label="Organisasjonsnummer eller navn" hint="Skriv 9-sifret org.nummer eller søk på navn — henter navn, lenke og kontaktperson automatisk fra Brreg." span={2}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <TextInput value={query} onChange={setQuery} placeholder="f.eks. 923609016 eller Equinor" />
+            <button
+              type="button"
+              className="opk-btn opk-btn--primary"
+              onClick={runSearch}
+              disabled={status === "searching" || status === "loading"}
+              style={{ flexShrink: 0 }}
+            >
+              {status === "searching" ? "Søker…" : status === "loading" ? "Henter…" : "🔍 Søk i Brreg"}
+            </button>
+          </div>
+          {status === "choosing" && candidates.length > 0 && (
+            <div className="opk-brreg-candidates">
+              {candidates.map((c) => (
+                <button key={c.orgnr} type="button" className="opk-brreg-candidate" onClick={() => runLookupForOrgnr(c.orgnr)}>
+                  <span className="opk-brreg-candidate__name">{c.name}</span>
+                  <span className="opk-brreg-candidate__meta">
+                    {c.orgnr}
+                    {c.municipality ? ` · ${c.municipality}` : ""}
+                    {c.orgForm ? ` · ${c.orgForm}` : ""}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+          {status === "success" && lookupInfo && (
+            <span className="opk-field__hint" style={{ color: "var(--success)" }}>
+              ✓ Fant {lookupInfo.name}
+              {lookupInfo.employees != null ? ` · ${lookupInfo.employees} ansatte` : ""}. Sjekk og juster kontaktinfo på steg 2.
+            </span>
+          )}
+          {status === "error" && <span className="opk-field__hint opk-field__hint--err">{errorMsg}</span>}
+        </Field>
+        <Field label="Selskapsnavn" hint="Slik det står i Brreg.">
+          <TextInput value={data.companyName} onChange={update("companyName")} placeholder="f.eks. Vekstloop AS" />
+        </Field>
+        <Field label="Organisasjonsnummer">
+          <TextInput value={data.orgnr} onChange={update("orgnr")} placeholder="9 siffer" />
+        </Field>
+        <Field label="Link til Proff eller Brreg" span={2}>
+          <TextInput
+            value={data.brregUrl}
+            onChange={update("brregUrl")}
+            placeholder="https://www.proff.no/selskap/..."
+            prefix={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>}
+          />
+        </Field>
+      </div>
+    </React.Fragment>
+  );
+};
+
+const StepContacts = ({ data, update }) => (
+  <React.Fragment>
+    <SectionHead tag="👋 Kontakter" title="Hvem snakker med hvem?" sub="Hos kunden og hos oss." />
+    <h3 className="opk-subhead">Hos kunden</h3>
+    <div className="opk-grid">
+      <Field label="Kontaktperson" hint="Forhåndsutfylt med daglig leder fra Brreg, om registrert." span={2}>
+        <TextInput value={data.clientContact} onChange={update("clientContact")} placeholder="Fornavn Etternavn" />
+      </Field>
+      <Field label="Mobilnummer">
+        <TextInput value={data.clientPhone} onChange={update("clientPhone")} placeholder="+47 ..." />
+      </Field>
+      <Field label="E-post">
+        <TextInput value={data.clientEmail} onChange={update("clientEmail")} type="email" placeholder="navn@selskap.no" />
+      </Field>
+    </div>
+
+    <h3 className="opk-subhead">Internt hos BHTN</h3>
+    <div className="opk-grid">
+      <Field label="Kontaktperson" span={2}>
+        <Select value={data.opkContact} onChange={update("opkContact")} options={TEAM_PEOPLE} />
+      </Field>
+    </div>
+  </React.Fragment>
+);
+
+const StepAvtale = ({ data, update }) => (
+  <React.Fragment>
+    <SectionHead tag="🩺 Avtale" title="Hva er avtalt?" sub="Fakturering og andre detaljer om avtalen." />
+    <div className="opk-grid">
+      <Field label="Avtaledato" hint="Dato kontrakten ble signert.">
+        <TextInput value={data.contractDate} onChange={update("contractDate")} type="date" />
+      </Field>
+      <Field label="Antall kunder" hint="Antall selskap/enheter dekket av denne avtalen.">
+        <TextInput value={data.customerCount} onChange={update("customerCount")} type="number" placeholder="1" />
+      </Field>
+      <Field label="Fakturering" hint="Dato for neste fakturering.">
+        <TextInput value={data.invoiceDate} onChange={update("invoiceDate")} type="date" />
+      </Field>
+      <Field label="Sum" hint="Beløp i NOK.">
+        <TextInput value={formatNok(data.fee)} onChange={(v) => update("fee")(unformatNok(v))} placeholder="5 000" prefix="kr" />
+      </Field>
+      <Field label="Fakt. frekvens" span={2} center>
+        <Segmented value={data.invoiceFrequency} onChange={update("invoiceFrequency")} options={INVOICE_FREQ.map(f => ({ value: f, label: f }))} fullWidth />
+      </Field>
+      <Field label="Annen info" hint="Fritekst, f.eks. status eller notater." span={2}>
+        <Textarea value={data.otherInfo} onChange={update("otherInfo")} placeholder="Eventuelle notater…" />
+      </Field>
+    </div>
+  </React.Fragment>
+);
+
+const StepReview = ({ data }) => (
+  <React.Fragment>
+    <SectionHead tag="⚡️ Slack-preview" title="Sånn ser meldingen ut." sub={`Sjekk en gang til, så fyrer vi den av i ${CHANNEL}.`} />
+    <SlackPreview data={data} channel={CHANNEL} />
+  </React.Fragment>
+);
+
+const OnboardingForm = ({ data, setData, step, setStep, onSend, sending }) => {
+  const update = (k) => (v) => setData((d) => ({ ...d, [k]: v }));
+
+  const requiredByStep = {
+    0: ["companyName"],
+    1: ["clientContact", "clientEmail", "opkContact"],
+    2: ["contractDate", "invoiceDate", "invoiceFrequency", "fee", "customerCount"],
+    3: [],
+  };
+  const stepValid = (requiredByStep[step] || []).every((k) => data[k] && data[k] !== "");
+
+  return (
+    <div className="opk-form">
+      <Stepper step={step} setStep={setStep} />
+      <div className="opk-card">
+        {step === 0 && <StepCompany   data={data} update={update} />}
+        {step === 1 && <StepContacts  data={data} update={update} />}
+        {step === 2 && <StepAvtale    data={data} update={update} />}
+        {step === 3 && <StepReview    data={data} />}
+
+        <div className="opk-form__nav">
+          <button type="button" className="opk-btn opk-btn--ghost" onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0}>← Tilbake</button>
+
+          {step < STEPS.length - 1 ? (
+            <button type="button" className="opk-btn opk-btn--primary" disabled={!stepValid} onClick={() => setStep(step + 1)}>Fortsett →</button>
+          ) : (
+            <button type="button" className="opk-btn opk-btn--magenta" disabled={sending} onClick={onSend}>
+              <span className="opk-btn__slack" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M5 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 1h2v4a2 2 0 1 1-2-2v-2Zm5-10a2 2 0 1 0-4 0 2 2 0 0 0 4 0Zm1 0V3a2 2 0 1 1 2 2h-2Zm9 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm-1-1V7a2 2 0 1 1-2-2v2h-2-2 4Zm-3 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm-1-5h-2v-4a2 2 0 1 1 2 2v2Z"/></svg>
+              </span>
+              {sending ? "Sender…" : "Send til Slack"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ---------- App ---------- */
+function App() {
+  const [data, setData] = useState(emptyData);
+  const [step, setStep] = useState(0);
+  const [sent, setSent] = useState(false);
+  const [sentCompanyName, setSentCompanyName] = useState("");
+  const [sentData, setSentData] = useState(null);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState(null);
+
+  const reset = () => { setSent(false); setSendError(null); setStep(0); setData(emptyData); setSentCompanyName(""); setSentData(null); };
+
+  const handleSend = async () => {
+    try {
+      setSending(true);
+      setSendError(null);
+      const res = await fetch(SLACK_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+      setSentCompanyName(data.companyName);
+      setSentData(data);
+      setSent(true);
+      setStep(0);
+      setData(emptyData);
+    } catch (e) {
+      setSendError(e.message || "Ukjent feil");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="opk-shell" data-screen-label={sent ? "Confirmation" : `Step ${step + 1}`}>
+      <Brand step={Math.min(step + 1, STEPS.length)} totalSteps={STEPS.length} />
+
+      {!sent && (
+        <React.Fragment>
+          <section className="opk-hero">
+            <div className="opk-hero__tag">⚡️ Onboarding · ny kunde</div>
+            <h1 className="opk-hero__title">
+              La oss <em>onboarde</em> en ny kunde sammen.
+            </h1>
+            <p className="opk-hero__sub">
+              Fyll ut det vi trenger om selskapet. Når du er ferdig, sender vi en pen melding inn i
+              Slack-kanalen <code style={{background:"var(--brand-magenta-100)",color:"var(--brand-magenta-700)",padding:"1px 6px",borderRadius:6,fontFamily:"var(--font-mono)",fontSize:13}}>{CHANNEL}</code>.
+            </p>
+          </section>
+
+          <OnboardingForm data={data} setData={setData} step={step} setStep={setStep} onSend={handleSend} sending={sending} />
+          {sendError && (
+            <div className="opk-error-banner">
+              Klarte ikke å sende til Slack: {sendError}
+            </div>
+          )}
+        </React.Fragment>
+      )}
+
+      {sent && (
+        <Confirmation companyName={sentCompanyName} data={sentData} channel={CHANNEL} onReset={reset} />
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+<script>
+  (function () {
+    var source = document.getElementById("app-source").textContent;
+    var output = Babel.transform(source, { presets: [["react", { runtime: "classic" }]] }).code;
+    (0, eval)(output);
+  })();
+</script>
+</body>
+</html>

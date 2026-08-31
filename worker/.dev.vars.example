@@ -1,0 +1,12 @@
+GOOGLE_SERVICE_ACCOUNT_EMAIL=din-tjenestekonto@ditt-prosjekt.iam.gserviceaccount.com
+GOOGLE_SERVICE_ACCOUNT_KEY=-----BEGIN PRIVATE KEY-----\nDIN_NOKKEL_HER\n-----END PRIVATE KEY-----\n
+GOOGLE_SHEET_ID=din_sheet_id_fra_url
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/din/webhook/url
+SLACK_SIGNING_SECRET=din_slack_signing_secret
+SMTP_HOST=smtp.dindomeneleverandor.no
+SMTP_PORT=587
+SMTP_USER=post@dittdomene.no
+SMTP_PASSWORD=ditt_e-post_passord
+IMAP_HOST=imap.dindomeneleverandor.no
+IMAP_PORT=993
+BACKUP_RECIPIENT=din-epost@dittdomene.no

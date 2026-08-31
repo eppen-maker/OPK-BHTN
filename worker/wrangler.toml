@@ -1,0 +1,19 @@
+name = "sirkular-helse-onboarding-worker"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+
+# Secrets (sett med `wrangler secret put NAVN`, ikke i denne filen):
+#   GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_SERVICE_ACCOUNT_KEY, GOOGLE_SHEET_ID
+#   SLACK_WEBHOOK_URL, SLACK_SIGNING_SECRET
+#   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD
+#   IMAP_HOST, IMAP_PORT
+#   SITE_PASSWORD (på Pages-prosjektet, ikke workeren)
+#   BACKUP_RECIPIENT
+
+# Ukentlig sikkerhetskopi av Google Sheets-dokumentet. Eksempel: fredager kl. 15:00 UTC.
+[triggers]
+crons = ["0 15 * * 5"]
+
+[[kv_namespaces]]
+binding = "BACKUP_STATE"
+id = "b4a7fa5ea9284c2a953120f7f16b9ddf"

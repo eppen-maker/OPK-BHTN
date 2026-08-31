@@ -1,0 +1,48 @@
+name: Deploy BHTN Onboarding
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  deploy-worker:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: |
+          npx wrangler secret put SLACK_WEBHOOK_URL --name sirkular-helse-onboarding-worker <<< "$BHT_SLACK_WEBHOOK_URL"
+          npx wrangler secret put SLACK_SIGNING_SECRET --name sirkular-helse-onboarding-worker <<< "$BHT_SLACK_SIGNING_SECRET"
+          npx wrangler secret put GOOGLE_SERVICE_ACCOUNT_EMAIL --name sirkular-helse-onboarding-worker <<< "$BHT_GOOGLE_SERVICE_ACCOUNT_EMAIL"
+          npx wrangler secret put GOOGLE_SERVICE_ACCOUNT_KEY --name sirkular-helse-onboarding-worker <<< "$BHT_GOOGLE_SERVICE_ACCOUNT_KEY"
+          npx wrangler secret put GOOGLE_SHEET_ID --name sirkular-helse-onboarding-worker <<< "$BHT_GOOGLE_SHEET_ID"
+          npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 29c54750e724e787e00668fd39f3f93e
+          BHT_SLACK_WEBHOOK_URL: ${{ secrets.BHT_SLACK_WEBHOOK_URL }}
+          BHT_SLACK_SIGNING_SECRET: ${{ secrets.BHT_SLACK_SIGNING_SECRET }}
+          BHT_GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.BHT_GOOGLE_SERVICE_ACCOUNT_EMAIL }}
+          BHT_GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.BHT_GOOGLE_SERVICE_ACCOUNT_KEY }}
+          BHT_GOOGLE_SHEET_ID: ${{ secrets.BHT_GOOGLE_SHEET_ID }}
+
+  deploy-pages:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npx wrangler pages deploy . --project-name=sirkular-helse-onboarding
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 29c54750e724e787e00668fd39f3f93e
