@@ -213,13 +213,15 @@ function addCustomerRow(data) {
 
   // Standardformatering på nye rader, satt direkte her fordi kolonneformatering ikke
   // arves automatisk av rader lagt til senere via API — hver ny rad må formateres selv.
-  sheet.getRange(targetRow, 1, 1, row.length).setFontSize(8);
+  // Regel: alt som kommer inn via Slack (denne funksjonen) skal ha lys rød 2-tekst og
+  // skriftstørrelse 8, uansett kolonne.
+  const fullRowRange = sheet.getRange(targetRow, 1, 1, row.length);
+  fullRowRange.setFontSize(8);
+  fullRowRange.setFontColor("#ea9999");
 
   const sumCol = findCol("Sum");
   if (sumCol !== -1) {
-    const sumRange = sheet.getRange(targetRow, sumCol + 1);
-    sumRange.setFontColor("#ea9999");
-    sumRange.setNumberFormat('#,##0.00" kr"');
+    sheet.getRange(targetRow, sumCol + 1).setNumberFormat('#,##0.00" kr"');
   }
   const oppstartCol = findCol("Oppstartsdato");
   if (oppstartCol !== -1) sheet.getRange(targetRow, oppstartCol + 1).setHorizontalAlignment("center");
