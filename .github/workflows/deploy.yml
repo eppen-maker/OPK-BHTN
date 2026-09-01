@@ -42,7 +42,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npx wrangler pages deploy . --project-name=sirkular-helse-onboarding
+      - run: |
+          npx wrangler pages secret put SITE_PASSWORD --project-name=sirkular-helse-onboarding <<< "$BHT_SITE_PASSWORD"
+          npx wrangler pages deploy . --project-name=sirkular-helse-onboarding
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: fb8594f4afe4f3863356d933c83151b4
+          BHT_SITE_PASSWORD: ${{ secrets.BHT_SITE_PASSWORD }}
