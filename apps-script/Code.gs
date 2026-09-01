@@ -191,6 +191,15 @@ function addCustomerRow(data) {
     const rowValues = sheet.getRange(r, 1, 1, lastCol).getValues()[0];
     if (rowValues.some((v) => (v || "").toString().trim())) {
       sheet.insertRowBefore(r);
+      // insertRowBefore arver formateringen til raden den dytter ned — det vil si den
+      // grønne oppsummeringsraden. Nullstill den nye raden til samme (mørke) formatering
+      // som resten av bufferen, hentet fra targetRow (en garantert tom bufferrad), slik at
+      // det kun er selve "Omsetning / Kunder"-raden som forblir grønn.
+      if (r > targetRow) {
+        sheet
+          .getRange(targetRow, 1, 1, lastCol)
+          .copyTo(sheet.getRange(r, 1, 1, lastCol), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+      }
       break;
     }
   }
