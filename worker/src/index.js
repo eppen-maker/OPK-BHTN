@@ -245,7 +245,7 @@ async function syncToSheet(token, sheetId, data) {
     [norm("Fakturering")]: data.invoiceDate || "",
     [norm("Fakt. frekvens")]: data.invoiceFrequency || "",
     [norm("Sum")]: data.fee || "",
-    [norm("Antall Kunder")]: data.customerCount || "",
+    [norm("Antall ansatte")]: data.customerCount || "",
     [norm("Annen info")]: protectFromFormula(data.otherInfo || ""),
   };
 
