@@ -18,6 +18,7 @@ function doPost(e) {
     if (action === "add") return jsonOut(addCustomerRow(body.data || {}));
     if (action === "lookup") return jsonOut(lookupCompany(body.companyName || ""));
     if (action === "deleteByOrgnr") return jsonOut(deleteRowsByOrgnr(body.orgnrs || []));
+    if (action === "formatColumn") return jsonOut(formatColumn(body.column, body.options || {}));
     return jsonOut({ error: "unknown action: " + action });
   } catch (err) {
     return jsonOut({ error: String(err) });
@@ -71,6 +72,31 @@ function deleteRowsByOrgnr(orgnrs) {
     }
   }
   return { deleted };
+}
+
+// Admin: still en kolonne (bokstav som "I", eller kolonneoverskrift som "Sum") — valgfri
+// tekstfarge, tallformat og horisontal justering. Gjelder fra header-raden og nedover.
+function formatColumn(columnRef, options) {
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_TAB);
+  if (!sheet) throw new Error('Fant ikke fanen "' + SHEET_TAB + '"');
+  const lastCol = sheet.getLastColumn();
+  const lastRow = Math.max(sheet.getLastRow(), HEADER_ROW + 1);
+
+  let colIndex;
+  if (/^[A-Za-z]+$/.test((columnRef || "").trim())) {
+    colIndex = columnRef.trim().toUpperCase().split("").reduce((acc, c) => acc * 26 + (c.charCodeAt(0) - 64), 0);
+  } else {
+    const headerRow = sheet.getRange(HEADER_ROW, 1, 1, lastCol).getValues()[0];
+    const norm = (s) => (s || "").toString().toLowerCase().replace(/[^a-zæøå0-9]/g, "");
+    colIndex = headerRow.findIndex((h) => norm(h) === norm(columnRef)) + 1;
+  }
+  if (!colIndex || colIndex < 1) throw new Error("Fant ikke kolonnen: " + columnRef);
+
+  const range = sheet.getRange(HEADER_ROW + 1, colIndex, lastRow - HEADER_ROW, 1);
+  if (options.fontColor) range.setFontColor(options.fontColor);
+  if (options.numberFormat) range.setNumberFormat(options.numberFormat);
+  if (options.horizontalAlignment) range.setHorizontalAlignment(options.horizontalAlignment);
+  return { formatted: true, column: colIndex };
 }
 
 // Skjemaet leverer datoer som YYYY-MM-DD (HTML <input type="date">); arket bruker DD.MM.YYYY.
