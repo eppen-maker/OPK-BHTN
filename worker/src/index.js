@@ -398,7 +398,7 @@ function chunk(arr, size) {
 function buildSlackPayload(data) {
   const pills = [
     data.invoiceFrequency && `Fakturering: ${data.invoiceFrequency}`,
-    data.customerCount && `${data.customerCount} kunde${data.customerCount === "1" ? "" : "r"}`,
+    data.customerCount && `${data.customerCount} ansatt${data.customerCount === "1" ? "" : "e"}`,
   ].filter(Boolean);
 
   const fields = [
@@ -408,7 +408,7 @@ function buildSlackPayload(data) {
     ["Fakturering", data.invoiceDate],
     ["Fakt. frekvens", data.invoiceFrequency],
     ["Sum", formatNOK(data.fee)],
-    ["Antall kunder", data.customerCount],
+    ["Antall ansatte", data.customerCount],
     ["Kontakt hos kunde", [data.clientContact, data.clientEmail, data.clientPhone].filter(Boolean).join(" · ") || null],
     ["Intern kontaktperson", data.opkContact],
     ["Annen info", data.otherInfo],

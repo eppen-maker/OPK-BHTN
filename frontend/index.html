@@ -251,9 +251,8 @@ const STEPS = [
 ];
 
 const INVOICE_FREQ = ["Månedlig", "Kvartalsvis", "Halvårlig", "Årlig"];
-// TODO: fornavn+etternavn på ansatte som skal kunne velges som interne kontaktpersoner i skjemaet.
 const TEAM_PEOPLE = [
-  "Ola Nordmann", "Kari Nordmann",
+  "Malin Syvertsen", "Jan Marcus Ramstad", "Kristoffer Lie Loftheim",
 ];
 
 function getToday() {
@@ -431,7 +430,7 @@ const SlackPreview = ({ data, channel = CHANNEL }) => {
               <SlackRow label="Fakturering">{data.invoiceDate}</SlackRow>
               <SlackRow label="Fakt. frekvens">{data.invoiceFrequency}</SlackRow>
               <SlackRow label="Sum">{data.fee ? `kr ${Number(data.fee).toLocaleString("nb-NO")}` : null}</SlackRow>
-              <SlackRow label="Antall kunder">{data.customerCount}</SlackRow>
+              <SlackRow label="Antall ansatte">{data.customerCount}</SlackRow>
               <SlackRow label="Kontakt hos kunde">
                 {data.clientContact ? (
                   <React.Fragment>
@@ -807,7 +806,7 @@ const StepAvtale = ({ data, update }) => (
       <Field label="Avtaledato" hint="Dato kontrakten ble signert.">
         <TextInput value={data.contractDate} onChange={update("contractDate")} type="date" />
       </Field>
-      <Field label="Antall kunder" hint="Antall selskap/enheter dekket av denne avtalen.">
+      <Field label="Antall ansatte" hint="Antall ansatte dekket av denne avtalen.">
         <TextInput value={data.customerCount} onChange={update("customerCount")} type="number" placeholder="1" />
       </Field>
       <Field label="Fakturering" hint="Dato for neste fakturering.">
