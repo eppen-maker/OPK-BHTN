@@ -218,10 +218,13 @@ function addCustomerRow(data) {
   const fullRowRange = sheet.getRange(targetRow, 1, 1, row.length);
   fullRowRange.setFontSize(8);
   fullRowRange.setFontColor("#ea9999");
+  fullRowRange.setFontWeight("bold");
 
   const sumCol = findCol("Sum");
   if (sumCol !== -1) {
-    sheet.getRange(targetRow, sumCol + 1).setNumberFormat('#,##0.00" kr"');
+    const sumRange = sheet.getRange(targetRow, sumCol + 1);
+    sumRange.setNumberFormat('#,##0.00" kr"');
+    sumRange.setHorizontalAlignment("center");
   }
   const oppstartCol = findCol("Oppstartsdato");
   if (oppstartCol !== -1) sheet.getRange(targetRow, oppstartCol + 1).setHorizontalAlignment("center");
