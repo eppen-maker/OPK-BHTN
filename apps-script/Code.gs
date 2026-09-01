@@ -36,6 +36,17 @@ function norm(s) {
   return (s || "").toString().toLowerCase().replace(/[^a-zæøå0-9]/g, "");
 }
 
+// Konverterer 1-indeksert kolonnenummer til bokstav(er), f.eks. 9 -> "I".
+function colLetter(col) {
+  let s = "";
+  while (col > 0) {
+    const rem = (col - 1) % 26;
+    s = String.fromCharCode(65 + rem) + s;
+    col = Math.floor((col - 1) / 26);
+  }
+  return s;
+}
+
 // Godtar enten en kolonnebokstav ("I") eller en kolonneoverskrift ("Sum").
 function resolveCol(sheet, ref) {
   if (/^[A-Za-z]+$/.test((ref || "").trim())) {
@@ -188,6 +199,7 @@ function addCustomerRow(data) {
   // akkurat som den var, mens Google Sheets selv utvider summeringsområdet til å inkludere
   // den nye kunderaden. Selve kunden skrives uansett inn på targetRow (rett under forrige
   // kunde) — innsettingen lenger ned påvirker ikke den raden.
+  let summaryRow = -1;
   for (let r = targetRow; r <= lastRow; r++) {
     const rowValues = sheet.getRange(r, 1, 1, lastCol).getValues()[0];
     if (rowValues.some((v) => (v || "").toString().trim())) {
@@ -201,6 +213,7 @@ function addCustomerRow(data) {
           .getRange(targetRow, 1, 1, lastCol)
           .copyTo(sheet.getRange(r, 1, 1, lastCol), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
       }
+      summaryRow = r + 1; // oppsummeringsraden lå på r, og ble dyttet ned én rad av insertRowBefore
       break;
     }
   }
@@ -245,6 +258,23 @@ function addCustomerRow(data) {
   if (oppstartCol !== -1) sheet.getRange(targetRow, oppstartCol + 1).setHorizontalAlignment("center");
   const mobilCol = findCol("Mobilnummer");
   if (mobilCol !== -1) sheet.getRange(targetRow, mobilCol + 1).setHorizontalAlignment("center");
+
+  // Sum-formlene på oppsummeringsraden viste seg å være en fast rekkevidde (f.eks. I4:I52)
+  // som aldri fulgte automatisk med når nye rader kom inn. Skriv dem derfor på nytt her,
+  // hver gang, slik at de alltid dekker nøyaktig fra første kunderad til den nyeste (targetRow).
+  if (summaryRow !== -1) {
+    const antallKunderCol = findCol("Antall Kunder");
+    if (sumCol !== -1) {
+      const colRef = colLetter(sumCol + 1);
+      sheet.getRange(summaryRow, sumCol + 1).setFormula(`=SUM(${colRef}${HEADER_ROW + 1}:${colRef}${targetRow})`);
+    }
+    if (antallKunderCol !== -1) {
+      const colRef = colLetter(antallKunderCol + 1);
+      sheet
+        .getRange(summaryRow, antallKunderCol + 1)
+        .setFormula(`=SUM(${colRef}${HEADER_ROW + 1}:${colRef}${targetRow})`);
+    }
+  }
 
   return { duplicate: false, row: targetRow };
 }
