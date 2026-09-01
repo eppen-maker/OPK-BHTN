@@ -166,185 +166,19 @@ async function getSheetRange(token, sheetId, range) {
   return json.values || [];
 }
 
-// :append (selv med et avgrenset område) bruker fortsatt Sheets sin egen "finn slutten av
-// tabellen"-gjetning, som kan bomme langt av gårde når kolonnen er sparsom (sett i
-// "1.0 Lønnskjøring": landet på rad 468 i stedet for rad 147, rett etter reell siste kunde på
-// rad 146). Derfor skriver vi i stedet direkte (PUT) til den nøyaktige raden vi selv har
-// regnet ut fra kolonne A (lastNonEmptyRow) — da er ingen gjetting involvert.
-async function updateSheetRow(token, sheetId, range, row) {
-  const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
-    {
-      method: "PUT",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ values: [row] }),
-    }
-  );
-  if (!res.ok) throw new Error("Kunne ikke skrive til ark: " + (await res.text()).slice(0, 300));
-  return res.json();
-}
-
-// Sjekker kolonne A OG B for "siste utfylte rad" (noen faner, f.eks. "4.1 MVA-betaling", kan ha
-// et kundenavn i B uten at org.nummer i A er fylt inn ennå — da skal ikke den raden overskrives).
-// Vi skriver likevel kun inn i kolonne A.
-function lastNonEmptyRow(existingRows) {
-  let last = 0;
-  existingRows.forEach((r, i) => {
-    if ((r[0] || "").trim() || (r[1] || "").trim()) last = i + 1; // 1-indexert radnummer
+// Skriver til "Kunder live"-fanen via et Google Apps Script Web App (bundet til selve arket)
+// i stedet for Sheets API med en tjenestekonto-nøkkel. Samme radoppsett/dupliseringssjekk som
+// før, men uten JWT/privatnøkkel-håndtering på worker-siden — se apps-script/Code.gs.
+async function syncViaAppsScript(data, env) {
+  const res = await fetch(env.GOOGLE_APPS_SCRIPT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ secret: env.GOOGLE_APPS_SCRIPT_SECRET, data }),
   });
-  return last;
-}
-
-// ============================================================================================
-// TODO: Denne funksjonen er et MINIMALT EKSEMPEL, ikke en ferdig løsning. Den ekte
-// (OPK-prosjektets) versjon var skreddersydd nøyaktig til OPK sitt spesifikke Google-ark
-// (kolonnenavn, "Sjekk"-formler mot sekundærfaner, dupliserte kolonnenavn som "Kontaktperson"
-// x2 osv.) — den logikken gir ingen mening for et annet ark med andre kolonner.
-//
-// Fremgangsmåte for å tilpasse dette til DITT ark (samme som ble gjort for OPK sitt ark):
-//   1. Del hovedarket med tjenestekontoen (GOOGLE_SERVICE_ACCOUNT_EMAIL) som Editor.
-//   2. Les overskriftsraden (values.get på f.eks. 'Fanenavn'!A1:AZ1) for å se eksakte
-//      kolonnenavn og rekkefølge.
-//   3. Match hvert felt fra skjemaet (data.companyName, data.orgnr, data.clientEmail, ...)
-//      mot riktig kolonnenavn i byHeader-oppsettet under.
-//   4. Hvis arket har egne formler (f.eks. oppslag mot andre faner) som skal gjelde for nye
-//      rader også: les en eksisterende rad med valueRenderOption=FORMULA for å se det eksakte
-//      formeluttrykket, og gjenskap det med riktig radnummer (se ${"${r}"}-mønsteret i
-//      SECONDARY_TABS-eksempelet under for hvordan det gjøres).
-// ============================================================================================
-async function syncToSheet(token, sheetId, data) {
-  const range = `'${SHEET_TAB}'!A1:AZ`;
-
-  const rows = await getSheetRange(token, sheetId, range);
-  const headerRow = rows[0] || [];
-  const dataRows = rows.slice(1);
-
-  const norm = (s) => (s || "").toLowerCase().replace(/[^a-zæøå0-9]/g, "");
-  const findCol = (name) => headerRow.findIndex((h) => norm(h) === norm(name));
-  const protectFromFormula = (v) => (typeof v === "string" && /^[+=@-]/.test(v) ? "'" + v : v);
-
-  // "KUNDELISTE BHTN"-arket har ingen org.nummer-kolonne, så bedriftsnavnet (Bedrift) brukes
-  // som unik nøkkel for å hindre duplikater — ikke vanntett ved identiske navn, men det nærmeste
-  // vi har til en id i dette arket.
-  const bedriftCol = findCol("Bedrift");
-  if (bedriftCol === -1) throw new Error(`Fant ikke kolonnen "Bedrift" i arkfanen "${SHEET_TAB}"`);
-
-  const targetName = (data.companyName || "").trim().toLowerCase();
-  const existingRowIndex = dataRows.findIndex((r) => (r[bedriftCol] || "").trim().toLowerCase() === targetName);
-  if (existingRowIndex !== -1) {
-    return { duplicate: true, row: existingRowIndex + 2 }; // +1 for header row, +1 for 1-indexing
-  }
-
-  const byHeader = {
-    [norm("Org.nummer")]: data.orgnr || "",
-    [norm("Dato")]: data.contractDate || "",
-    [norm("Bedrift")]: data.companyName || "",
-    [norm("Kontaktperson")]: protectFromFormula(data.clientContact || ""),
-    [norm("E-post")]: data.clientEmail || "",
-    [norm("Mobilnummer")]: protectFromFormula(data.clientPhone || ""),
-    [norm("Fakturering")]: data.invoiceDate || "",
-    [norm("Fakt. frekvens")]: data.invoiceFrequency || "",
-    [norm("Sum")]: data.fee || "",
-    [norm("Antall ansatte")]: data.customerCount || "",
-    [norm("Annen info")]: protectFromFormula(data.otherInfo || ""),
-  };
-
-  // Mange ark har formler forhåndsutfylt langt nedover rutenettet (som "malrader"), så
-  // dataRows.length kan telle disse og gi et altfor høyt radnummer. Finn derfor siste
-  // reelle rad basert kun på nøkkelkolonnen (samme mønster som i SECONDARY_TABS).
-  let lastDataRow = 1; // rad 1 er overskriften — gulv, slik at et tomt ark treffer rad 2, ikke rad 1
-  dataRows.forEach((r, i) => {
-    if ((r[bedriftCol] || "").trim()) lastDataRow = i + 2; // +1 for header, +1 for 1-indeksering
-  });
-  const targetRow = lastDataRow + 1;
-
-  const row = headerRow.map((h) => {
-    const key = norm(h);
-    return key in byHeader ? byHeader[key] : "";
-  });
-
-  await updateSheetRow(token, sheetId, `'${SHEET_TAB}'!A${targetRow}:AZ${targetRow}`, row);
-  return { duplicate: false };
-}
-
-function colLetter(n) {
-  let s = "";
-  while (n > 0) {
-    const rem = (n - 1) % 26;
-    s = String.fromCharCode(65 + rem) + s;
-    n = Math.floor((n - 1) / 26);
-  }
-  return s;
-}
-
-// TODO: dette er ETT eksempel-oppslag, ikke en ferdig liste. Hver ekte fane trenger sin egen
-// oppføring her, funnet ved å lese fanens overskriftsrad + en eksempelrad (valueRenderOption=
-// FORMULA) i det ekte arket, akkurat som i kommentaren over syncToSheet.
-//
-// Feltforklaring per fane:
-//   name          - eksakt fanenavn (case-sensitive, med mellomrom/spesialtegn som i arket)
-//   condition     - når skal denne fanen få nøkkelen skrevet inn (basert på skjemadata)
-//   dataStartsRow - første rad UNDER overskrift/legender (0.0-arkets header kan ligge på
-//                   en annen rad enn dette; sjekk hver fane for seg)
-//   lastCol       - hvor mange kolonner (1-indeksert) fanens formler/data strekker seg over
-//   checkboxCols  - (valgfritt) 1-indekserte kolonner som er ekte avkrysningsbokser i arket;
-//                   disse må skrives som `false`, ikke tom streng, ellers forsvinner boks-UI-en
-//   formulas(r)   - map fra 1-indeksert kolonnenummer til formel-streng, med ${r} som
-//                   plassholder for radnummeret (interpolert av malen, ikke av JS her)
-const SECONDARY_TABS = [
-  {
-    name: "Eksempelfane",
-    condition: () => true,
-    dataStartsRow: 2,
-    lastCol: 3,
-    formulas: (r) => ({
-      2: `=IFERROR(INDEX('${"Kunder"}'!$B$2:$B;MATCH($A${r};'${"Kunder"}'!$A$2:$A;0));"")`,
-    }),
-  },
-];
-
-async function writeOrgNumberToTab(token, sheetId, tab, orgnr) {
-  const targetOrgnr = (orgnr || "").replace(/\s/g, "");
-  const existing = await getSheetRange(token, sheetId, `'${tab.name}'!A:B`);
-  const alreadyThere = existing.some((r) => (r[0] || "").replace(/\s/g, "") === targetOrgnr);
-  if (alreadyThere) return { written: false, reason: "allerede der" };
-  const floor = tab.dataStartsRow ? tab.dataStartsRow - 1 : 0;
-  const targetRow = Math.max(lastNonEmptyRow(existing), floor) + 1;
-  const formulaMap = tab.formulas ? tab.formulas(targetRow) : {};
-  const checkboxCols = tab.checkboxCols || [];
-  const width = tab.lastCol || 1;
-  const row = [];
-  for (let c = 1; c <= width; c++) {
-    if (c === 1) row.push(orgnr);
-    else if (formulaMap[c]) row.push(formulaMap[c]);
-    else if (checkboxCols.includes(c)) row.push(false);
-    else row.push("");
-  }
-  await updateSheetRow(token, sheetId, `'${tab.name}'!A${targetRow}:${colLetter(width)}${targetRow}`, row);
-  return { written: true };
-}
-
-async function syncAllTabs(data, env) {
-  const token = await getGoogleSheetsToken(env);
-  const sheetId = env.GOOGLE_SHEET_ID;
-
-  const mainResult = await syncToSheet(token, sheetId, data);
-  if (mainResult.duplicate) {
-    return { duplicate: true, row: mainResult.row, secondary: [] };
-  }
-
-  const secondary = [];
-  for (const tab of SECONDARY_TABS) {
-    if (!tab.condition(data)) continue;
-    try {
-      const r = await writeOrgNumberToTab(token, sheetId, tab, data.orgnr);
-      secondary.push({ tab: tab.name, ...r });
-    } catch (e) {
-      secondary.push({ tab: tab.name, written: false, error: (e.message || "").slice(0, 150) });
-    }
-  }
-
-  return { duplicate: false, secondary };
+  if (!res.ok) throw new Error("Apps Script-kall feilet: " + (await res.text()).slice(0, 300));
+  const json = await res.json();
+  if (json.error) throw new Error(json.error);
+  return json;
 }
 
 // TODO: bytt ut med domenene siden din faktisk kjører på.
@@ -915,24 +749,18 @@ async function verifySlackSignature(request, env) {
 }
 
 async function processAddedToCrm(payload, data, env) {
-  const sheetsConfigured = env.GOOGLE_SHEET_ID && env.GOOGLE_SERVICE_ACCOUNT_EMAIL && env.GOOGLE_SERVICE_ACCOUNT_KEY;
+  const sheetsConfigured = env.GOOGLE_APPS_SCRIPT_URL && env.GOOGLE_APPS_SCRIPT_SECRET;
   let resultText;
   if (!sheetsConfigured) {
     resultText = "⚠️ Google Sheets er ikke konfigurert ennå.";
   } else {
     try {
-      const result = await syncAllTabs(data, env);
+      const result = await syncViaAppsScript(data, env);
       const who = payload.user?.username || payload.user?.name || "noen";
       if (result.duplicate) {
         resultText = `⚠️ "${data.companyName || "?"}" finnes allerede i "${SHEET_TAB}", rad ${result.row}. Sjekk om dette er riktig — ingen ny rad ble lagt til.`;
       } else {
-        const writtenTabs = result.secondary.filter((s) => s.written).map((s) => s.tab);
-        const failedTabs = result.secondary.filter((s) => s.error);
         resultText = `✅ Lagt til i CRM av ${who}.`;
-        if (writtenTabs.length) resultText += ` Lagt til i: ${writtenTabs.join(", ")}.`;
-        if (failedTabs.length) {
-          resultText += ` ⚠️ Feilet i: ${failedTabs.map((s) => s.tab).join(", ")}.`;
-        }
       }
     } catch (e) {
       resultText = `⚠️ Klarte ikke å legge til i CRM: ${(e.message || "ukjent feil").slice(0, 200)}`;

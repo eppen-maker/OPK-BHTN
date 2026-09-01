@@ -2,8 +2,10 @@ name = "sirkular-helse-onboarding-worker"
 main = "src/index.js"
 compatibility_date = "2024-09-23"
 
-# Secrets (sett med `wrangler secret put NAVN`, ikke i denne filen):
-#   GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_SERVICE_ACCOUNT_KEY, GOOGLE_SHEET_ID
+# Secrets (sett med `wrangler secret put NAVN`, eller direkte i Cloudflare-dashbordet under
+# Settings → Variables and Secrets — ikke i denne filen):
+#   GOOGLE_APPS_SCRIPT_URL, GOOGLE_APPS_SCRIPT_SECRET  (CRM-overføring, se apps-script/README.md)
+#   GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_SERVICE_ACCOUNT_KEY, GOOGLE_SHEET_ID  (kun ukentlig backup)
 #   SLACK_WEBHOOK_URL, SLACK_SIGNING_SECRET
 #   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD
 #   IMAP_HOST, IMAP_PORT
