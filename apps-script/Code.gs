@@ -180,14 +180,14 @@ function addCustomerRow(data) {
   });
   let targetRow = lastDataRow + 1;
 
-  // Sikkerhetssjekk: hopp forbi enhver rad som allerede har innhold i EN AV kolonnene
-  // (f.eks. en oppsummeringsrad lenger ned), slik at vi aldri overskriver noe eksisterende.
-  while (targetRow <= lastRow) {
+  // Hvis raden rett under siste kunde allerede har innhold, er det oppsummeringsraden
+  // (f.eks. "Omsetning / Kunder:" med sum-formler). I stedet for å hoppe forbi den setter
+  // vi inn en ny, tom rad akkurat der — det dytter oppsummeringsraden (og formlene i den)
+  // én rad nedover, og Google Sheets utvider selv summeringsområdet til å inkludere raden.
+  if (targetRow <= lastRow) {
     const existingRowValues = sheet.getRange(targetRow, 1, 1, lastCol).getValues()[0];
     if (existingRowValues.some((v) => (v || "").toString().trim())) {
-      targetRow++;
-    } else {
-      break;
+      sheet.insertRowBefore(targetRow);
     }
   }
 
@@ -202,6 +202,7 @@ function addCustomerRow(data) {
   byHeader[norm("Fakt. frekvens")] = data.invoiceFrequency || "";
   byHeader[norm("Sum")] = data.fee || "";
   byHeader[norm("Antall ansatte")] = data.customerCount || "";
+  byHeader[norm("Antall Kunder")] = "1";
   byHeader[norm("Annen info")] = protect(data.otherInfo || "");
 
   const row = headerRow.map((h) => {
