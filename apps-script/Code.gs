@@ -14,10 +14,63 @@ function doPost(e) {
     if (body.secret !== SHARED_SECRET) {
       return jsonOut({ error: "unauthorized" });
     }
-    return jsonOut(addCustomerRow(body.data || {}));
+    const action = body.action || "add";
+    if (action === "add") return jsonOut(addCustomerRow(body.data || {}));
+    if (action === "lookup") return jsonOut(lookupCompany(body.companyName || ""));
+    if (action === "deleteByOrgnr") return jsonOut(deleteRowsByOrgnr(body.orgnrs || []));
+    return jsonOut({ error: "unknown action: " + action });
   } catch (err) {
     return jsonOut({ error: String(err) });
   }
+}
+
+// Admin: finn nøyaktig hva som står i arket for et gitt firmanavn (for feilsøking av
+// "gikk ikke over"-tilfeller uten å måtte gjette).
+function lookupCompany(companyName) {
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_TAB);
+  if (!sheet) throw new Error('Fant ikke fanen "' + SHEET_TAB + '"');
+  const lastCol = sheet.getLastColumn();
+  const lastRow = sheet.getLastRow();
+  const headerRow = sheet.getRange(HEADER_ROW, 1, 1, lastCol).getValues()[0];
+  const norm = (s) => (s || "").toString().toLowerCase().replace(/[^a-zæøå0-9]/g, "");
+  const bedriftCol = headerRow.findIndex((h) => norm(h) === norm("Bedrift"));
+  if (bedriftCol === -1) throw new Error('Fant ikke kolonnen "Bedrift"');
+  if (lastRow <= HEADER_ROW) return { found: false };
+  const rows = sheet.getRange(HEADER_ROW + 1, 1, lastRow - HEADER_ROW, lastCol).getValues();
+  const target = (companyName || "").trim().toLowerCase();
+  for (let i = 0; i < rows.length; i++) {
+    if ((rows[i][bedriftCol] || "").toString().trim().toLowerCase() === target) {
+      return { found: true, row: i + HEADER_ROW + 1, values: rows[i] };
+    }
+  }
+  return { found: false };
+}
+
+// Admin: slett rader der Org.nummer-kolonnen matcher en av de gitte verdiene (brukt til å
+// rydde bort testrader). Sletter nedenfra og opp så radnumrene ikke forskyves underveis.
+function deleteRowsByOrgnr(orgnrs) {
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_TAB);
+  if (!sheet) throw new Error('Fant ikke fanen "' + SHEET_TAB + '"');
+  const lastCol = sheet.getLastColumn();
+  const lastRow = sheet.getLastRow();
+  const headerRow = sheet.getRange(HEADER_ROW, 1, 1, lastCol).getValues()[0];
+  const norm = (s) => (s || "").toString().toLowerCase().replace(/[^a-zæøå0-9]/g, "");
+  const orgCol = headerRow.findIndex((h) => norm(h) === norm("Org.nummer"));
+  if (orgCol === -1) throw new Error('Fant ikke kolonnen "Org.nummer"');
+  if (lastRow <= HEADER_ROW) return { deleted: [] };
+
+  const targets = new Set((orgnrs || []).map((o) => (o || "").toString().replace(/\s/g, "")));
+  const rows = sheet.getRange(HEADER_ROW + 1, 1, lastRow - HEADER_ROW, lastCol).getValues();
+  const deleted = [];
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const orgVal = (rows[i][orgCol] || "").toString().replace(/\s/g, "");
+    if (targets.has(orgVal)) {
+      const rowNum = i + HEADER_ROW + 1;
+      sheet.deleteRow(rowNum);
+      deleted.push(rowNum);
+    }
+  }
+  return { deleted };
 }
 
 // Skjemaet leverer datoer som YYYY-MM-DD (HTML <input type="date">); arket bruker DD.MM.YYYY.
