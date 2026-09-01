@@ -18,6 +18,7 @@ function doPost(e) {
     if (action === "add") return jsonOut(addCustomerRow(body.data || {}));
     if (action === "lookup") return jsonOut(lookupCompany(body.companyName || ""));
     if (action === "deleteByOrgnr") return jsonOut(deleteRowsByOrgnr(body.orgnrs || []));
+    if (action === "deleteRows") return jsonOut(deleteRowsByNumber(body.rows || []));
     if (action === "formatColumn") return jsonOut(formatColumn(body.column, body.options || {}));
     return jsonOut({ error: "unknown action: " + action });
   } catch (err) {
@@ -72,6 +73,20 @@ function deleteRowsByOrgnr(orgnrs) {
     }
   }
   return { deleted };
+}
+
+// Admin: slett rader direkte via radnummer (1-indeksert, som vist i selve arket). Nekter å
+// slette header-raden eller noe over den, som sikkerhetssperre mot å ramme feil rad.
+function deleteRowsByNumber(rowNumbers) {
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_TAB);
+  if (!sheet) throw new Error('Fant ikke fanen "' + SHEET_TAB + '"');
+  const lastRow = sheet.getLastRow();
+  const valid = (rowNumbers || [])
+    .map((n) => Number(n))
+    .filter((n) => Number.isInteger(n) && n > HEADER_ROW && n <= lastRow);
+  const uniqueSorted = Array.from(new Set(valid)).sort((a, b) => b - a);
+  uniqueSorted.forEach((rowNum) => sheet.deleteRow(rowNum));
+  return { deleted: uniqueSorted };
 }
 
 // Admin: still en kolonne (bokstav som "I", eller kolonneoverskrift som "Sum") — valgfri
