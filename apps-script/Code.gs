@@ -2,8 +2,11 @@
 // Erstatter Sheets API + tjenestekonto-nøkkel for å skrive nye kunder inn i "Kunder live".
 // Oppsett: se apps-script/README.md.
 
+const SHEET_ID = "1DyP84qxN27nBo6v3F7f36i8Ljs0EJZWcTCPYlVdlC4U";
 const SHEET_TAB = "Kunder live";
 const SHARED_SECRET = "4eeb6ea868f3fb04746ebd79e9ea619d32f7db425d56a5c6";
+// Rad 1-2 er tittel/lenke-celler i "Kunder live" — de faktiske kolonneoverskriftene ligger på rad 3.
+const HEADER_ROW = 3;
 
 function doPost(e) {
   try {
@@ -18,12 +21,12 @@ function doPost(e) {
 }
 
 function addCustomerRow(data) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_TAB);
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_TAB);
   if (!sheet) throw new Error('Fant ikke fanen "' + SHEET_TAB + '"');
 
   const lastCol = sheet.getLastColumn();
   const lastRow = sheet.getLastRow();
-  const headerRow = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const headerRow = sheet.getRange(HEADER_ROW, 1, 1, lastCol).getValues()[0];
 
   const norm = (s) => (s || "").toString().toLowerCase().replace(/[^a-zæøå0-9]/g, "");
   const findCol = (name) => headerRow.findIndex((h) => norm(h) === norm(name));
@@ -33,9 +36,9 @@ function addCustomerRow(data) {
   if (bedriftCol === -1) throw new Error('Fant ikke kolonnen "Bedrift"');
 
   const bedriftValues =
-    lastRow > 1
+    lastRow > HEADER_ROW
       ? sheet
-          .getRange(2, bedriftCol + 1, lastRow - 1, 1)
+          .getRange(HEADER_ROW + 1, bedriftCol + 1, lastRow - HEADER_ROW, 1)
           .getValues()
           .map((r) => (r[0] || "").toString().trim().toLowerCase())
       : [];
@@ -43,20 +46,19 @@ function addCustomerRow(data) {
   const targetName = (data.companyName || "").trim().toLowerCase();
   const existingIdx = bedriftValues.indexOf(targetName);
   if (existingIdx !== -1) {
-    return { duplicate: true, row: existingIdx + 2 };
+    return { duplicate: true, row: existingIdx + HEADER_ROW + 1 };
   }
 
   // Mange ark har formler forhåndsutfylt langt nedover rutenettet (malrader), så getLastRow()
   // kan gi et altfor høyt tall. Finn derfor siste reelle rad basert på Bedrift-kolonnen.
-  let lastDataRow = 1;
+  let lastDataRow = HEADER_ROW;
   bedriftValues.forEach((v, i) => {
-    if (v) lastDataRow = i + 2;
+    if (v) lastDataRow = i + HEADER_ROW + 1;
   });
   const targetRow = lastDataRow + 1;
 
   const byHeader = {};
   byHeader[norm("Org.nummer")] = data.orgnr || "";
-  byHeader[norm("Dato")] = data.contractDate || "";
   byHeader[norm("Oppstartsdato")] = data.contractDate || "";
   byHeader[norm("Bedrift")] = data.companyName || "";
   byHeader[norm("Kontaktperson")] = protect(data.clientContact || "");
