@@ -20,6 +20,13 @@ function doPost(e) {
   }
 }
 
+// Skjemaet leverer datoer som YYYY-MM-DD (HTML <input type="date">); arket bruker DD.MM.YYYY.
+function formatDateNorwegian(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
+  if (!m) return iso || "";
+  return `${m[3]}.${m[2]}.${m[1]}`;
+}
+
 function addCustomerRow(data) {
   const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_TAB);
   if (!sheet) throw new Error('Fant ikke fanen "' + SHEET_TAB + '"');
@@ -55,16 +62,27 @@ function addCustomerRow(data) {
   bedriftValues.forEach((v, i) => {
     if (v) lastDataRow = i + HEADER_ROW + 1;
   });
-  const targetRow = lastDataRow + 1;
+  let targetRow = lastDataRow + 1;
+
+  // Sikkerhetssjekk: hopp forbi enhver rad som allerede har innhold i EN AV kolonnene
+  // (f.eks. en oppsummeringsrad lenger ned), slik at vi aldri overskriver noe eksisterende.
+  while (targetRow <= lastRow) {
+    const existingRowValues = sheet.getRange(targetRow, 1, 1, lastCol).getValues()[0];
+    if (existingRowValues.some((v) => (v || "").toString().trim())) {
+      targetRow++;
+    } else {
+      break;
+    }
+  }
 
   const byHeader = {};
   byHeader[norm("Org.nummer")] = data.orgnr || "";
-  byHeader[norm("Oppstartsdato")] = data.contractDate || "";
+  byHeader[norm("Oppstartsdato")] = formatDateNorwegian(data.contractDate);
   byHeader[norm("Bedrift")] = data.companyName || "";
   byHeader[norm("Kontaktperson")] = protect(data.clientContact || "");
   byHeader[norm("E-post")] = data.clientEmail || "";
   byHeader[norm("Mobilnummer")] = protect(data.clientPhone || "");
-  byHeader[norm("Fakturering")] = data.invoiceDate || "";
+  byHeader[norm("Fakturering")] = formatDateNorwegian(data.invoiceDate);
   byHeader[norm("Fakt. frekvens")] = data.invoiceFrequency || "";
   byHeader[norm("Sum")] = data.fee || "";
   byHeader[norm("Antall ansatte")] = data.customerCount || "";
@@ -76,7 +94,7 @@ function addCustomerRow(data) {
   });
 
   sheet.getRange(targetRow, 1, 1, row.length).setValues([row]);
-  return { duplicate: false };
+  return { duplicate: false, row: targetRow };
 }
 
 function jsonOut(obj) {
