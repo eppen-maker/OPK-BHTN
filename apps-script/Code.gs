@@ -61,7 +61,7 @@ function resolveCol(sheet, ref) {
 //   { op: "deleteByOrgnr", orgnrs: ["999999995"] }              — sletter rader med matchende Org.nummer
 //   { op: "formatColumn", column: "I", fontColor, numberFormat, horizontalAlignment }
 //   { op: "setCell", row: 12, column: "E", value: "ny@epost.no" }
-//   { op: "readRow", row: 12 }                                   — returnerer alle celleverdier i raden
+//   { op: "readRow", row: 12 }                                   — returnerer verdier + formler i raden
 //   { op: "lookup", companyName: "Firma AS" }                    — finn rad basert på firmanavn
 function runOps(ops) {
   const sheet = getSheet();
@@ -110,7 +110,8 @@ function runOps(ops) {
         case "readRow": {
           const lastCol = sheet.getLastColumn();
           const values = sheet.getRange(op.row, 1, 1, lastCol).getValues()[0];
-          return { op: "readRow", row: op.row, values };
+          const formulas = sheet.getRange(op.row, 1, 1, lastCol).getFormulas()[0];
+          return { op: "readRow", row: op.row, values, formulas };
         }
         case "lookup": {
           return { op: "lookup", ...lookupCompany(op.companyName || "") };
