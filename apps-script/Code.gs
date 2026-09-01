@@ -254,10 +254,10 @@ function addCustomerRow(data) {
     sumRange.setNumberFormat('#,##0.00" kr"');
     sumRange.setHorizontalAlignment("center");
   }
-  const oppstartCol = findCol("Oppstartsdato");
-  if (oppstartCol !== -1) sheet.getRange(targetRow, oppstartCol + 1).setHorizontalAlignment("center");
-  const mobilCol = findCol("Mobilnummer");
-  if (mobilCol !== -1) sheet.getRange(targetRow, mobilCol + 1).setHorizontalAlignment("center");
+  ["Oppstartsdato", "Mobilnummer", "Fakturering", "Antall ansatte", "Antall Kunder"].forEach((name) => {
+    const col = findCol(name);
+    if (col !== -1) sheet.getRange(targetRow, col + 1).setHorizontalAlignment("center");
+  });
 
   // Sum-formlene på oppsummeringsraden viste seg å være en fast rekkevidde (f.eks. I4:I52)
   // som aldri fulgte automatisk med når nye rader kom inn. Skriv dem derfor på nytt her,
