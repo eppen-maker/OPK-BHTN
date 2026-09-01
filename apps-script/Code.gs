@@ -262,6 +262,10 @@ function addCustomerRow(data) {
   // Sum-formlene på oppsummeringsraden viste seg å være en fast rekkevidde (f.eks. I4:I52)
   // som aldri fulgte automatisk med når nye rader kom inn. Skriv dem derfor på nytt her,
   // hver gang, slik at de alltid dekker nøyaktig fra første kunderad til den nyeste (targetRow).
+  // K (Antall Kunder) brukte SUM(K...), men noen eksisterende "1"-verdier i kolonnen viste seg
+  // å være lagret som tekst (trolig pga. "Ren tekst"-format på kolonnen fra tidligere), så SUM
+  // hoppet stille over dem. Tell derfor antall kunderader direkte via COUNTA på Bedrift-kolonnen
+  // i stedet — det er upåvirket av om enkeltceller i K er tekst eller tall.
   if (summaryRow !== -1) {
     const antallKunderCol = findCol("Antall Kunder");
     if (sumCol !== -1) {
@@ -269,10 +273,10 @@ function addCustomerRow(data) {
       sheet.getRange(summaryRow, sumCol + 1).setFormula(`=SUM(${colRef}${HEADER_ROW + 1}:${colRef}${targetRow})`);
     }
     if (antallKunderCol !== -1) {
-      const colRef = colLetter(antallKunderCol + 1);
+      const bedriftColRef = colLetter(bedriftCol + 1);
       sheet
         .getRange(summaryRow, antallKunderCol + 1)
-        .setFormula(`=SUM(${colRef}${HEADER_ROW + 1}:${colRef}${targetRow})`);
+        .setFormula(`=COUNTA(${bedriftColRef}${HEADER_ROW + 1}:${bedriftColRef}${targetRow})`);
     }
   }
 
