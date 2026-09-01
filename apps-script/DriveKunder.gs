@@ -20,6 +20,29 @@ function doPost(e) {
   }
 }
 
+// POST-svar fra Apps Script kommer tilbake pakket i en Google-omdirigering som curl ikke
+// klarer å lese (kjente quirk — selve kjøringen fungerer, men svaret er utilgjengelig).
+// GET-svar har ikke dette problemet, så tilby de skrivefrie op-ene her også, via query-param
+// ?op=... i URL-en, slik at de kan verifiseres direkte.
+function doGet(e) {
+  try {
+    const params = e.parameter || {};
+    if (params.secret !== SHARED_SECRET) {
+      return jsonOut({ error: "unauthorized" });
+    }
+    if (params.op === "nextCustomerNumber") {
+      return jsonOut(computeNextCustomerNumber());
+    }
+    if (params.op === "listFolder") {
+      const folder = DriveApp.getFolderById(params.folderId || KUNDER_FOLDER_ID);
+      return jsonOut({ entries: listChildren(folder) });
+    }
+    return jsonOut({ error: "ukjent eller ikke-lesbar op-type for GET" });
+  } catch (err) {
+    return jsonOut({ error: String(err) });
+  }
+}
+
 // Støttede op-typer:
 //   { op: "listFolder", folderId }                          — lister mapper+filer direkte under folderId
 //   { op: "nextCustomerNumber" }                             — finner neste ledige kundenummer i "2. Kunder"
