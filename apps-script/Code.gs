@@ -178,16 +178,20 @@ function addCustomerRow(data) {
   bedriftValues.forEach((v, i) => {
     if (v) lastDataRow = i + HEADER_ROW + 1;
   });
-  let targetRow = lastDataRow + 1;
+  const targetRow = lastDataRow + 1;
 
-  // Hvis raden rett under siste kunde allerede har innhold, er det oppsummeringsraden
-  // (f.eks. "Omsetning / Kunder:" med sum-formler). I stedet for å hoppe forbi den setter
-  // vi inn en ny, tom rad akkurat der — det dytter oppsummeringsraden (og formlene i den)
-  // én rad nedover, og Google Sheets utvider selv summeringsområdet til å inkludere raden.
-  if (targetRow <= lastRow) {
-    const existingRowValues = sheet.getRange(targetRow, 1, 1, lastCol).getValues()[0];
-    if (existingRowValues.some((v) => (v || "").toString().trim())) {
-      sheet.insertRowBefore(targetRow);
+  // Oppsummeringsraden (f.eks. "Omsetning / Kunder:" med sum-formler) ligger et stykke
+  // nedenfor siste kunde, med tomme bufferrader mellom. Let etter den første raden med
+  // innhold fra og med targetRow og nedover, og sett inn en ny, tom rad rett over den —
+  // det dytter oppsummeringsraden (og formlene i den) én rad nedover og bevarer bufferen
+  // akkurat som den var, mens Google Sheets selv utvider summeringsområdet til å inkludere
+  // den nye kunderaden. Selve kunden skrives uansett inn på targetRow (rett under forrige
+  // kunde) — innsettingen lenger ned påvirker ikke den raden.
+  for (let r = targetRow; r <= lastRow; r++) {
+    const rowValues = sheet.getRange(r, 1, 1, lastCol).getValues()[0];
+    if (rowValues.some((v) => (v || "").toString().trim())) {
+      sheet.insertRowBefore(r);
+      break;
     }
   }
 
