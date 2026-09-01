@@ -213,6 +213,8 @@ function addCustomerRow(data) {
 
   // Standardformatering på nye rader, satt direkte her fordi kolonneformatering ikke
   // arves automatisk av rader lagt til senere via API — hver ny rad må formateres selv.
+  sheet.getRange(targetRow, 1, 1, row.length).setFontSize(8);
+
   const sumCol = findCol("Sum");
   if (sumCol !== -1) {
     const sumRange = sheet.getRange(targetRow, sumCol + 1);
