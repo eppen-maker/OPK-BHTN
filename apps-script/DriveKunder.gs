@@ -225,7 +225,31 @@ function fillContractPlaceholders(fileId, customer) {
   // daglig leder-navn — alle andre "xxx"-forekomster er allerede erstattet over.
   body.replaceText("\\bxxx\\b", contact);
 
+  // replaceText() arver formateringen til teksten den erstatter — plassholderne ("xxx",
+  // "SELSKAP AS") var fet skrift + gulmarkert i malen, så de faktiske verdiene ble det også.
+  // Nullstill fet skrift og bakgrunnsfarge på nøyaktig de verdiene som nettopp ble satt inn,
+  // slik at de fremstår som vanlig, sort tekst — samme stil som resten av dokumentet.
+  [name, address, orgnr, contact, email, phone, fee, date].forEach((v) => clearHighlight(body, v));
+
   doc.saveAndClose();
+}
+
+// Finner alle forekomster av en tekstverdi i dokumentet og nullstiller fet skrift og
+// bakgrunnsfarge på dem — brukes til å fjerne den gule plassholder-highlighten/fet skrift som
+// ellers arves fra "xxx"/"SELSKAP AS" når replaceText() setter inn de faktiske verdiene.
+function clearHighlight(body, value) {
+  const v = (value || "").toString().trim();
+  if (!v) return;
+  const pattern = v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  let result = body.findText(pattern);
+  while (result !== null) {
+    const el = result.getElement().asText();
+    const start = result.getStartOffset();
+    const end = result.getEndOffsetInclusive();
+    el.setBold(start, end, false);
+    el.setBackgroundColor(start, end, null);
+    result = body.findText(pattern, result);
+  }
 }
 
 // Formaterer organisasjonsnummer som "NNN NNN NNN".
