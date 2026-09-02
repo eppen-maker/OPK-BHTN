@@ -265,6 +265,7 @@ function getToday() {
 
 const emptyData = {
   companyName: "", orgnr: "", orgForm: "", brregUrl: "",
+  clientAddress: "",
   clientContact: "", clientPhone: "", clientEmail: "",
   opkContact: "",
   contractDate: getToday(), invoiceDate: "", invoiceFrequency: "",
@@ -423,6 +424,7 @@ const SlackPreview = ({ data, channel = CHANNEL }) => {
             </div>
             <div className="slack__grid">
               <SlackRow label="Org.nr">{data.orgnr}</SlackRow>
+              <SlackRow label="Adresse">{data.clientAddress}</SlackRow>
               <SlackRow label="Brreg/Proff">
                 {data.brregUrl ? <a href={data.brregUrl}>{data.brregUrl}</a> : null}
               </SlackRow>
@@ -760,6 +762,9 @@ const StepCompany = ({ data, update }) => {
         </Field>
         <Field label="Organisasjonsnummer">
           <TextInput value={data.orgnr} onChange={update("orgnr")} placeholder="9 siffer" />
+        </Field>
+        <Field label="Adresse" span={2}>
+          <TextInput value={data.clientAddress} onChange={update("clientAddress")} placeholder="Gateadresse, postnr og sted" />
         </Field>
         <Field label="Link til Proff eller Brreg" span={2}>
           <TextInput

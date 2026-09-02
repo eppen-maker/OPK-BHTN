@@ -192,15 +192,14 @@ function createCustomer(customer) {
 }
 
 // Erstatter de gule plassholderfeltene ("SELSKAP AS", "xxx", og det feilaktig hardkodede
-// "Vimms AS:" ved signaturfeltet) i kontrakt-kopien med kundens faktiske data. Adresse er
-// ikke med her — ingen del av dataflyten (skjema eller CRM-ark) samler inn adresse i dag,
-// så det feltet står fortsatt igjen som "xxx" til noen fyller det inn manuelt.
+// "Vimms AS:" ved signaturfeltet) i kontrakt-kopien med kundens faktiske data.
 function fillContractPlaceholders(fileId, customer) {
   const doc = DocumentApp.openById(fileId);
   const body = doc.getBody();
 
   const name = esc(customer.companyName || "");
   const orgnr = esc(formatOrgnr(customer.orgnr || ""));
+  const address = esc(customer.clientAddress || "");
   const contact = esc(customer.clientContact || "");
   const email = esc(customer.clientEmail || "");
   const phone = esc(customer.clientPhone || "");
@@ -208,6 +207,7 @@ function fillContractPlaceholders(fileId, customer) {
   const date = esc(customer.contractDate || "");
 
   body.replaceText("Oppdragsgiver:(\\s*)SELSKAP AS", "Oppdragsgiver:$1" + name);
+  body.replaceText("Adresse:(\\s*)xxx", "Adresse:$1" + address);
   body.replaceText("Organisasjonsnummer:(\\s*)xxx", "Organisasjonsnummer:$1" + orgnr);
   body.replaceText("Kontaktperson:(\\s*)xxx", "Kontaktperson:$1" + contact);
   body.replaceText("Telefon:(\\s*)xxx", "Telefon:$1" + phone);

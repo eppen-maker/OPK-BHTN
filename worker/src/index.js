@@ -237,6 +237,7 @@ function buildSlackPayload(data) {
 
   const fields = [
     ["Org.nr", data.orgnr],
+    ["Adresse", data.clientAddress],
     ["Brreg/Proff", data.brregUrl ? `<${data.brregUrl}|${data.brregUrl}>` : null],
     ["Avtaledato", data.contractDate],
     ["Fakturering", data.invoiceDate],

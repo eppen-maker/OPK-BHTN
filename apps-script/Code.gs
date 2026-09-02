@@ -313,6 +313,7 @@ function addCustomerRow(data) {
             companyName: data.companyName || "",
             orgnr: data.orgnr || "",
             contractDate: formatDateNorwegian(data.contractDate),
+            clientAddress: data.clientAddress || "",
             clientContact: data.clientContact || "",
             clientEmail: data.clientEmail || "",
             clientPhone: data.clientPhone || "",
