@@ -206,15 +206,19 @@ function fillContractPlaceholders(fileId, customer) {
   const fee = esc(formatThousands(customer.fee || ""));
   const date = esc(customer.contractDate || "");
 
-  body.replaceText("Oppdragsgiver:(\\s*)SELSKAP AS", "Oppdragsgiver:$1" + name);
-  body.replaceText("Adresse:(\\s*)xxx", "Adresse:$1" + address);
-  body.replaceText("Organisasjonsnummer:(\\s*)xxx", "Organisasjonsnummer:$1" + orgnr);
-  body.replaceText("Kontaktperson:(\\s*)xxx", "Kontaktperson:$1" + contact);
-  body.replaceText("Telefon:(\\s*)xxx", "Telefon:$1" + phone);
-  body.replaceText("E-post:(\\s*)xxx", "E-post:$1" + email);
+  // Apps Script sin replaceText() tolker IKKE $1/$2 i erstatningsteksten som
+  // regex-backreferanser (skrives ut bokstavelig) — bruk derfor aldri capture-grupper i
+  // erstatningen, sett heller inn ett fast mellomrom uansett hvor mange mellomrom originalen
+  // hadde. Dette var også trolig årsaken til at Adresse-feltet ikke matchet i det hele tatt.
+  body.replaceText("Oppdragsgiver:\\s*SELSKAP AS", "Oppdragsgiver: " + name);
+  body.replaceText("Adresse:\\s*xxx", "Adresse: " + address);
+  body.replaceText("Organisasjonsnummer:\\s*xxx", "Organisasjonsnummer: " + orgnr);
+  body.replaceText("Kontaktperson:\\s*xxx", "Kontaktperson: " + contact);
+  body.replaceText("Telefon:\\s*xxx", "Telefon: " + phone);
+  body.replaceText("E-post:\\s*xxx", "E-post: " + email);
   body.replaceText("bistå xxx", "bistå " + name);
   body.replaceText("Digital Kartlegging i xxx", "Digital Kartlegging i " + name);
-  body.replaceText("Kr(\\s+)xxx(\\s+)per år", "Kr$1" + fee + "$2per år");
+  body.replaceText("Kr\\s+xxx\\s+per år", "Kr " + fee + " per år");
   body.replaceText("Mandal, xxx", "Mandal, " + date);
   body.replaceText("Vimms AS:", name + ":");
   // Det som gjenstår av fristående "xxx" på dette punktet er signaturfeltet for kundens
