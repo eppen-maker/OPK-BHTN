@@ -15,6 +15,15 @@ const DRIVE_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbxHsF2-Qc01VjwSBihUVYolKZecvoJc_Qt6w9cMAWIlqYxsUEbmr-IEwqkOTRtAIBeleg/exec";
 const DRIVE_SHARED_SECRET = "bhtn-drive-8f2c4a91d6e3b7051f9c2ea4d8b6317c";
 
+// Kjøres KUN manuelt, én gang, direkte i editoren (velg denne funksjonen i dropdown-menyen
+// øverst og trykk Kjør/Run — ikke via deploy). UrlFetchApp.fetch (brukt for å kalle
+// DriveKunder automatisk) krever et eget samtykke-scope (script.external_request) som Google
+// bare spør om når en funksjon kjøres direkte i editoren, ikke automatisk ved en ny deploy.
+// Denne funksjonen trigger nettopp den samtykke-dialogen. Kan slettes etter at den er godkjent.
+function authorizeExternalRequest() {
+  UrlFetchApp.fetch(DRIVE_SCRIPT_URL, { muteHttpExceptions: true });
+}
+
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
