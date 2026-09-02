@@ -117,10 +117,28 @@ function createCustomer(companyName) {
   const name = (companyName || "").trim();
   if (!name) throw new Error("companyName mangler");
 
+  const kunderFolder = DriveApp.getFolderById(KUNDER_FOLDER_ID);
+
+  // Nekt å opprette en ny kundemappe hvis firmanavnet allerede finnes blant eksisterende
+  // mapper (uavhengig av nummer foran) — samme type duplikatsjekk som CRM-scriptet gjør mot
+  // Bedrift-kolonnen i "Kunder live". Unngår at samme kunde ved en feil får to mapper (skjedde
+  // med PARTSMEISTER AS: 69. ble opprettet manuelt samme dag som et testkall lagde 70.).
+  const targetName = name.toLowerCase();
+  const existingFolders = kunderFolder.getFolders();
+  while (existingFolders.hasNext()) {
+    const f = existingFolders.next();
+    const existingName = f
+      .getName()
+      .replace(/^\d+\s*\.\s*/, "")
+      .trim()
+      .toLowerCase();
+    if (existingName === targetName) {
+      return { duplicate: true, folderId: f.getId(), folderName: f.getName(), folderUrl: f.getUrl() };
+    }
+  }
+
   const { next } = computeNextCustomerNumber();
   const folderName = `${next}. ${name}`;
-
-  const kunderFolder = DriveApp.getFolderById(KUNDER_FOLDER_ID);
   const newFolder = kunderFolder.createFolder(folderName);
 
   const malkundeFolder = DriveApp.getFolderById(MALKUNDE_FOLDER_ID);
@@ -133,6 +151,7 @@ function createCustomer(companyName) {
   }
 
   return {
+    duplicate: false,
     folderId: newFolder.getId(),
     folderName,
     folderUrl: newFolder.getUrl(),
