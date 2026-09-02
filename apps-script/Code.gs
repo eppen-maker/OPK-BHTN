@@ -317,11 +317,6 @@ function addCustomerRow(data) {
     driveResult = { error: String(err) };
   }
 
-  // Midlertidig feilsøkingslogg: skriv resultatet av Drive-kallet til en kolonne langt til
-  // høyre (utenfor synlig område), siden POST-svar fra denne funksjonen ikke er lesbare via
-  // curl. Kan leses tilbake ved å lese selve arket. Fjernes når kjeden er bekreftet stabil.
-  sheet.getRange(targetRow, 30).setValue(JSON.stringify(driveResult));
-
   return { duplicate: false, row: targetRow, drive: driveResult };
 }
 
