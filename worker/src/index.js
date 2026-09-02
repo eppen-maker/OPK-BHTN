@@ -364,6 +364,37 @@ async function handleSearch(request, env, origin) {
   return jsonResponse({ ok: true, results }, 200, origin);
 }
 
+// Live-søk mot Kartverkets offisielle, gratis adresseregister — brukes til å autofylle
+// gateadresse + postnr + poststed mens brukeren skriver, i stedet for fri tekst.
+async function handleAddressSearch(request, env, origin) {
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed" }, 405, origin);
+  }
+
+  const url = new URL(request.url);
+  const q = (url.searchParams.get("q") || "").trim();
+  if (q.length < 3) {
+    return jsonResponse({ ok: true, results: [] }, 200, origin);
+  }
+
+  const res = await fetch(
+    `https://ws.geonorge.no/adresser/v1/sok?sok=${encodeURIComponent(q)}&treffPerSide=8&asciiKompatibel=true`,
+    { headers: { Accept: "application/json" } }
+  );
+  if (!res.ok) {
+    return jsonResponse({ error: "Klarte ikke å søke i Kartverkets adresseregister" }, 502, origin);
+  }
+  const json = await res.json();
+  const results = (json.adresser || []).map((a) => ({
+    text: `${a.adressetekst}, ${a.postnummer} ${a.poststed}`,
+    streetAddress: a.adressetekst,
+    postalCode: a.postnummer,
+    city: a.poststed,
+  }));
+
+  return jsonResponse({ ok: true, results }, 200, origin);
+}
+
 // Sender via rå SMTP (STARTTLS) med Cloudflare Workers sitt TCP Sockets-API — funker mot
 // enhver vanlig e-postleverandør (Domeneshop, One.com, GoDaddy, ...), ikke bare Microsoft 365 /
 // Google Workspace. Sett SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD som secrets.
@@ -851,6 +882,10 @@ export default {
 
     if (url.pathname === "/search") {
       return handleSearch(request, env, origin);
+    }
+
+    if (url.pathname === "/address-search") {
+      return handleAddressSearch(request, env, origin);
     }
 
     if (url.pathname === "/slack-interactivity") {

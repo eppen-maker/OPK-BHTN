@@ -335,6 +335,63 @@ const Textarea = ({ value, onChange, placeholder, rows = 3 }) => (
   />
 );
 
+// Gateadresse med live-søk mot Kartverkets adresseregister — skriv noen bokstaver, velg riktig
+// treff fra listen, så settes hele adressen ("Gate 1, 4640 Søgne") inn automatisk. Man kan også
+// bare skrive fritekst og la stå, om det ikke finnes noe treff.
+const AddressField = ({ value, onChange }) => {
+  const [candidates, setCandidates] = useState([]);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    const q = (value || "").trim();
+    if (q.length < 3) {
+      setCandidates([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`${SLACK_ENDPOINT}/address-search?q=${encodeURIComponent(q)}`);
+        const json = await res.json().catch(() => ({}));
+        setCandidates(json.ok ? json.results : []);
+      } catch {
+        setCandidates([]);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [value]);
+
+  return (
+    <div style={{ position: "relative" }}>
+      <div className="opk-input">
+        <input
+          type="text"
+          value={value || ""}
+          onChange={(e) => { onChange(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          placeholder="Begynn å skrive gateadresse …"
+        />
+      </div>
+      {open && candidates.length > 0 && (
+        <div className="opk-brreg-candidates">
+          {candidates.map((c) => (
+            <button
+              key={c.text}
+              type="button"
+              className="opk-brreg-candidate"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { onChange(c.text); setCandidates([]); setOpen(false); }}
+            >
+              <span className="opk-brreg-candidate__name">{c.streetAddress}</span>
+              <span className="opk-brreg-candidate__meta">{c.postalCode} {c.city}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Select = ({ value, onChange, options }) => (
   <div className="opk-input opk-input--select">
     <select value={value || ""} onChange={(e) => onChange(e.target.value)}>
@@ -763,8 +820,8 @@ const StepCompany = ({ data, update }) => {
         <Field label="Organisasjonsnummer">
           <TextInput value={data.orgnr} onChange={update("orgnr")} placeholder="9 siffer" />
         </Field>
-        <Field label="Adresse" span={2}>
-          <TextInput value={data.clientAddress} onChange={update("clientAddress")} placeholder="Gateadresse, postnr og sted" />
+        <Field label="Adresse" hint="Skriv gateadressen — postnummer og sted fylles inn automatisk fra listen." span={2}>
+          <AddressField value={data.clientAddress} onChange={update("clientAddress")} />
         </Field>
         <Field label="Link til Proff eller Brreg" span={2}>
           <TextInput
