@@ -320,6 +320,13 @@ async function handleLookup(request, env, origin) {
   const companyPhone = enhet.telefon || enhet.mobil || null;
   const orgForm = enhet.organisasjonsform?.kode || null;
 
+  const adresse = enhet.forretningsadresse || enhet.postadresse;
+  const companyAddress = adresse
+    ? [(adresse.adresse || []).filter(Boolean).join(" "), [adresse.postnummer, adresse.poststed].filter(Boolean).join(" ")]
+        .filter(Boolean)
+        .join(", ")
+    : null;
+
   return jsonResponse(
     {
       ok: true,
@@ -329,6 +336,7 @@ async function handleLookup(request, env, origin) {
       dagligLeder,
       companyEmail,
       companyPhone,
+      companyAddress,
       orgForm,
     },
     200,
@@ -359,37 +367,6 @@ async function handleSearch(request, env, origin) {
     orgnr: e.organisasjonsnummer,
     municipality: e.forretningsadresse?.kommune || e.postadresse?.kommune || null,
     orgForm: e.organisasjonsform?.beskrivelse || null,
-  }));
-
-  return jsonResponse({ ok: true, results }, 200, origin);
-}
-
-// Live-søk mot Kartverkets offisielle, gratis adresseregister — brukes til å autofylle
-// gateadresse + postnr + poststed mens brukeren skriver, i stedet for fri tekst.
-async function handleAddressSearch(request, env, origin) {
-  if (request.method !== "GET") {
-    return jsonResponse({ error: "Method not allowed" }, 405, origin);
-  }
-
-  const url = new URL(request.url);
-  const q = (url.searchParams.get("q") || "").trim();
-  if (q.length < 3) {
-    return jsonResponse({ ok: true, results: [] }, 200, origin);
-  }
-
-  const res = await fetch(
-    `https://ws.geonorge.no/adresser/v1/sok?sok=${encodeURIComponent(q)}&treffPerSide=8&asciiKompatibel=true`,
-    { headers: { Accept: "application/json" } }
-  );
-  if (!res.ok) {
-    return jsonResponse({ error: "Klarte ikke å søke i Kartverkets adresseregister" }, 502, origin);
-  }
-  const json = await res.json();
-  const results = (json.adresser || []).map((a) => ({
-    text: `${a.adressetekst}, ${a.postnummer} ${a.poststed}`,
-    streetAddress: a.adressetekst,
-    postalCode: a.postnummer,
-    city: a.poststed,
   }));
 
   return jsonResponse({ ok: true, results }, 200, origin);
@@ -882,10 +859,6 @@ export default {
 
     if (url.pathname === "/search") {
       return handleSearch(request, env, origin);
-    }
-
-    if (url.pathname === "/address-search") {
-      return handleAddressSearch(request, env, origin);
     }
 
     if (url.pathname === "/slack-interactivity") {
