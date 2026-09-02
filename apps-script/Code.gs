@@ -307,7 +307,18 @@ function addCustomerRow(data) {
       contentType: "application/json",
       payload: JSON.stringify({
         secret: DRIVE_SHARED_SECRET,
-        ops: [{ op: "createCustomer", companyName: data.companyName || "" }],
+        ops: [
+          {
+            op: "createCustomer",
+            companyName: data.companyName || "",
+            orgnr: data.orgnr || "",
+            contractDate: formatDateNorwegian(data.contractDate),
+            clientContact: data.clientContact || "",
+            clientEmail: data.clientEmail || "",
+            clientPhone: data.clientPhone || "",
+            fee: data.fee || "",
+          },
+        ],
       }),
       muteHttpExceptions: true,
     });

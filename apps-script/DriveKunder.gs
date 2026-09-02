@@ -7,6 +7,17 @@
 const KUNDER_FOLDER_ID = "1hv5qdpGDtvTANa318RhNzh8u1F04vnUF"; // "1. Kundeinfo/2. Kunder"
 const MALKUNDE_FOLDER_ID = "1IoozOFmHrtk0rmXXazQ0vmnturU8CFNB"; // ".../1. Malfiler/MALKUNDE - Kopieres ved nye kunder"
 const SHARED_SECRET = "bhtn-drive-8f2c4a91d6e3b7051f9c2ea4d8b6317c";
+// Kontrakt-malen ligger i MALKUNDE-mappen — brukes kun som en trygg, skrivebeskyttet
+// autoriseringssjekk (åpnes read-only), aldri for å redigere selve malen.
+const SAMPLE_CONTRACT_ID = "1RFq0e1X61u-6IxuMYX-t8wOf5-z-iu6YtOOmT3cmWsI";
+
+// Kjøres KUN manuelt, én gang, direkte i editoren (velg denne funksjonen i dropdown-menyen
+// øverst og trykk Kjør/Run). fillContractPlaceholders() bruker DocumentApp, som krever et eget
+// samtykke-scope (documents) Google bare spør om når en funksjon kjøres direkte i editoren,
+// ikke automatisk ved en ny deploy. Åpner malen kun for lesing — endrer ingenting.
+function authorizeDocumentAccess() {
+  DocumentApp.openById(SAMPLE_CONTRACT_ID).getBody().getText();
+}
 
 function doPost(e) {
   try {
@@ -46,8 +57,11 @@ function doGet(e) {
 // Støttede op-typer:
 //   { op: "listFolder", folderId }                          — lister mapper+filer direkte under folderId
 //   { op: "nextCustomerNumber" }                             — finner neste ledige kundenummer i "2. Kunder"
-//   { op: "createCustomer", companyName }                    — oppretter "{nr}. {navn}"-mappe og kopierer
-//                                                                inn alle filene fra MALKUNDE-mappen
+//   { op: "createCustomer", companyName, orgnr, contractDate, clientContact, clientEmail,
+//     clientPhone, fee }                                     — oppretter "{nr}. {navn}"-mappe, kopierer
+//                                                                inn alle filene fra MALKUNDE-mappen, og
+//                                                                fyller ut kontrakt-KOPIEN (ikke malfilen)
+//                                                                med kundedataene som er sendt inn
 function runOps(ops) {
   return (ops || []).map((op) => {
     try {
@@ -61,7 +75,7 @@ function runOps(ops) {
           return { op: "nextCustomerNumber", next, lastName };
         }
         case "createCustomer": {
-          return { op: "createCustomer", ...createCustomer(op.companyName || "") };
+          return { op: "createCustomer", ...createCustomer(op) };
         }
         default:
           return { op: op.op, error: "ukjent op-type" };
@@ -111,10 +125,11 @@ function computeNextCustomerNumber() {
   return { next: maxNum + 1, lastName };
 }
 
-// Oppretter "{nr}. {firmanavn}"-mappen under "2. Kunder", og kopierer (ikke flytter) alle
-// filene fra MALKUNDE-mappen inn i den nye kundemappen.
-function createCustomer(companyName) {
-  const name = (companyName || "").trim();
+// Oppretter "{nr}. {firmanavn}"-mappen under "2. Kunder", kopierer (ikke flytter) alle filene
+// fra MALKUNDE-mappen inn i den nye kundemappen, og fyller ut kontrakt-KOPIEN (aldri malfilen
+// i MALKUNDE selv) med kundedataene som er sendt inn.
+function createCustomer(customer) {
+  const name = (customer.companyName || "").trim();
   if (!name) throw new Error("companyName mangler");
 
   const kunderFolder = DriveApp.getFolderById(KUNDER_FOLDER_ID);
@@ -150,13 +165,83 @@ function createCustomer(companyName) {
     copiedFiles.push({ id: copy.getId(), title: copy.getName() });
   }
 
+  // Fyll ut kontrakt-KOPIEN som nettopp ble opprettet i kundemappen (aldri malfilen i
+  // MALKUNDE) med kundedataene. Ikke-kritisk: feiler dette, er mappen og filene uansett
+  // opprettet korrekt, så feilen fanges og legges ved i svaret i stedet for å kastes videre.
+  const contractFile = copiedFiles.find((f) => f.title.indexOf("Kontrakt") !== -1);
+  let contractFilled = false;
+  let contractFillError = null;
+  if (contractFile) {
+    try {
+      fillContractPlaceholders(contractFile.id, customer);
+      contractFilled = true;
+    } catch (err) {
+      contractFillError = String(err);
+    }
+  }
+
   return {
     duplicate: false,
     folderId: newFolder.getId(),
     folderName,
     folderUrl: newFolder.getUrl(),
     copiedFiles,
+    contractFilled,
+    contractFillError,
   };
+}
+
+// Erstatter de gule plassholderfeltene ("SELSKAP AS", "xxx", og det feilaktig hardkodede
+// "Vimms AS:" ved signaturfeltet) i kontrakt-kopien med kundens faktiske data. Adresse er
+// ikke med her — ingen del av dataflyten (skjema eller CRM-ark) samler inn adresse i dag,
+// så det feltet står fortsatt igjen som "xxx" til noen fyller det inn manuelt.
+function fillContractPlaceholders(fileId, customer) {
+  const doc = DocumentApp.openById(fileId);
+  const body = doc.getBody();
+
+  const name = esc(customer.companyName || "");
+  const orgnr = esc(formatOrgnr(customer.orgnr || ""));
+  const contact = esc(customer.clientContact || "");
+  const email = esc(customer.clientEmail || "");
+  const phone = esc(customer.clientPhone || "");
+  const fee = esc(formatThousands(customer.fee || ""));
+  const date = esc(customer.contractDate || "");
+
+  body.replaceText("Oppdragsgiver:(\\s*)SELSKAP AS", "Oppdragsgiver:$1" + name);
+  body.replaceText("Organisasjonsnummer:(\\s*)xxx", "Organisasjonsnummer:$1" + orgnr);
+  body.replaceText("Kontaktperson:(\\s*)xxx", "Kontaktperson:$1" + contact);
+  body.replaceText("Telefon:(\\s*)xxx", "Telefon:$1" + phone);
+  body.replaceText("E-post:(\\s*)xxx", "E-post:$1" + email);
+  body.replaceText("bistå xxx", "bistå " + name);
+  body.replaceText("Digital Kartlegging i xxx", "Digital Kartlegging i " + name);
+  body.replaceText("Kr(\\s+)xxx(\\s+)per år", "Kr$1" + fee + "$2per år");
+  body.replaceText("Mandal, xxx", "Mandal, " + date);
+  body.replaceText("Vimms AS:", name + ":");
+  // Det som gjenstår av fristående "xxx" på dette punktet er signaturfeltet for kundens
+  // daglig leder-navn — alle andre "xxx"-forekomster er allerede erstattet over.
+  body.replaceText("\\bxxx\\b", contact);
+
+  doc.saveAndClose();
+}
+
+// Formaterer organisasjonsnummer som "NNN NNN NNN".
+function formatOrgnr(orgnr) {
+  const digits = (orgnr || "").toString().replace(/\D/g, "");
+  if (digits.length !== 9) return orgnr || "";
+  return digits.replace(/(\d{3})(\d{3})(\d{3})/, "$1 $2 $3");
+}
+
+// Formaterer et tall med mellomrom som tusenskille, f.eks. 2990 -> "2 990".
+function formatThousands(n) {
+  const num = parseInt((n || "").toString().replace(/\D/g, ""), 10);
+  if (isNaN(num)) return (n || "").toString();
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+}
+
+// Unngår at "$" i en kundeverdi (usannsynlig, men mulig i f.eks. et notat) blir tolket som
+// en regex-backreferanse av replaceText().
+function esc(s) {
+  return (s || "").toString().replace(/\$/g, "$$$$");
 }
 
 function jsonOut(obj) {
