@@ -8,6 +8,13 @@ const SHARED_SECRET = "4eeb6ea868f3fb04746ebd79e9ea619d32f7db425d56a5c6";
 // Rad 1-2 er tittel/lenke-celler i "Kunder live" — de faktiske kolonneoverskriftene ligger på rad 3.
 const HEADER_ROW = 3;
 
+// Separat DriveKunder-script (egen Apps Script-prosjekt, egen hemmelig nøkkel) som oppretter
+// "{nr}. {firmanavn}"-mappen under "1. Kundeinfo/2. Kunder" og kopierer inn malfilene fra
+// MALKUNDE. Kalles automatisk herfra rett etter at en ny kunderad er skrevet, se addCustomerRow.
+const DRIVE_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbxHsF2-Qc01VjwSBihUVYolKZecvoJc_Qt6w9cMAWIlqYxsUEbmr-IEwqkOTRtAIBeleg/exec";
+const DRIVE_SHARED_SECRET = "bhtn-drive-8f2c4a91d6e3b7051f9c2ea4d8b6317c";
+
 function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
@@ -280,7 +287,28 @@ function addCustomerRow(data) {
     }
   }
 
-  return { duplicate: false, row: targetRow };
+  // Trigger automatisk opprettelse av kundemappe + kopiering av malfiler i Drive, via det
+  // separate DriveKunder-scriptet. Rad-skrivingen over er allerede fullført på dette punktet,
+  // så en feil her (f.eks. midlertidig Drive-feil) skal ikke gi inntrykk av at hele
+  // innsendingen feilet — fanges og legges ved i svaret i stedet for å kastes videre.
+  let driveResult = null;
+  try {
+    const res = UrlFetchApp.fetch(DRIVE_SCRIPT_URL, {
+      method: "post",
+      contentType: "application/json",
+      payload: JSON.stringify({
+        secret: DRIVE_SHARED_SECRET,
+        ops: [{ op: "createCustomer", companyName: data.companyName || "" }],
+      }),
+      muteHttpExceptions: true,
+    });
+    const json = JSON.parse(res.getContentText());
+    driveResult = (json.results && json.results[0]) || json;
+  } catch (err) {
+    driveResult = { error: String(err) };
+  }
+
+  return { duplicate: false, row: targetRow, drive: driveResult };
 }
 
 function jsonOut(obj) {
