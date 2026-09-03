@@ -268,8 +268,8 @@ const emptyData = {
   clientAddress: "",
   clientContact: "", clientPhone: "", clientEmail: "",
   opkContact: "",
-  contractDate: getToday(), invoiceDate: "", invoiceFrequency: "",
-  fee: "", customerCount: "1", otherInfo: "",
+  contractDate: getToday(), invoiceDate: getToday(), invoiceFrequency: "Årlig",
+  fee: "2990", customerCount: "1", otherInfo: "",
 };
 
 /* ---------- Brand ---------- */
@@ -676,6 +676,7 @@ const StepCompany = ({ data, update }) => {
       if (json.companyEmail) update("clientEmail")(json.companyEmail);
       if (json.companyPhone) update("clientPhone")(json.companyPhone);
       if (json.companyAddress) update("clientAddress")(json.companyAddress);
+      if (json.employees != null) update("customerCount")(String(json.employees));
       setLookupInfo(json);
       setCandidates([]);
       setStatus("success");
@@ -839,8 +840,29 @@ const StepReview = ({ data }) => (
   </React.Fragment>
 );
 
+// Fastpris basert på antall ansatte: 1-4 -> 2 990, 5-9 -> 4 990, 10-19 -> 7 990. 20+ er
+// individuelt avtalt, så da rører vi ikke Sum-feltet — det må fylles inn manuelt.
+const feeForEmployeeCount = (n) => {
+  if (n >= 1 && n <= 4) return "2990";
+  if (n >= 5 && n <= 9) return "4990";
+  if (n >= 10 && n <= 19) return "7990";
+  return null;
+};
+
 const OnboardingForm = ({ data, setData, step, setStep, onSend, sending }) => {
-  const update = (k) => (v) => setData((d) => ({ ...d, [k]: v }));
+  const update = (k) => (v) => setData((d) => {
+    const next = { ...d, [k]: v };
+    // Fakturadato følger avtaledato som standard, helt til noen endrer fakturadatoen
+    // manuelt til noe annet enn avtaledatoen — da slutter den å følge automatisk.
+    if (k === "contractDate" && d.invoiceDate === d.contractDate) {
+      next.invoiceDate = v;
+    }
+    if (k === "customerCount") {
+      const fee = feeForEmployeeCount(parseInt(v, 10));
+      if (fee !== null) next.fee = fee;
+    }
+    return next;
+  });
 
   const requiredByStep = {
     0: ["companyName"],
