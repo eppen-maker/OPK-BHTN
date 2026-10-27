@@ -344,6 +344,113 @@ async function handleLookup(request, env, origin) {
   );
 }
 
+// Parser norske tallformater som "2 990,00 kr" / "7 990,00 kr" til et vanlig number.
+function parseNOK(value) {
+  if (value == null || value === "") return null;
+  const cleaned = String(value)
+    .replace(/kr/gi, "")
+    .replace(/[\s ]/g, "")
+    .replace(/\./g, "")
+    .replace(",", ".")
+    .trim();
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+// "01.09.2026" -> { year: 2026, month: 8 (0-indeksert) } — rad hoppes over hvis formatet ikke matcher.
+function parseNorwegianDate(value) {
+  const m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec((value || "").trim());
+  if (!m) return null;
+  return { year: Number(m[3]), month: Number(m[2]) - 1 };
+}
+
+const PRICE_TIERS = [2990, 4990, 7990];
+
+// Leser "Kunder live" via samme tjenestekonto-token som den ukentlige backupen, og regner ut
+// enkel statistikk til dashbordet. Rad 1-3 er titler/overskrifter (se HEADER_ROW i Code.gs),
+// selve kundedataene starter på rad 4 og slutter der "Bedrift"-cellen blir tom (bufferrader/
+// "Omsetning / Kunder:"-oppsummeringen nedenfor).
+async function computeStats(env) {
+  const token = await getGoogleSheetsToken(env);
+  const rows = await getSheetRange(token, env.GOOGLE_SHEET_ID, `'${SHEET_TAB}'!A4:K`);
+
+  const customers = rows
+    .map((r) => ({
+      date: r[0] || "",
+      company: (r[1] || "").trim(),
+      fee: parseNOK(r[8]),
+      frequency: (r[7] || "").trim(),
+      employees: Number(r[9]) || null,
+    }))
+    .filter((c) => c.company && !c.company.toLowerCase().includes("omsetning"));
+
+  const annualFee = (c) => {
+    if (c.fee == null) return 0;
+    const freq = c.frequency.toLowerCase();
+    if (freq.includes("måned")) return c.fee * 12;
+    if (freq.includes("kvartal")) return c.fee * 4;
+    if (freq.includes("halvår")) return c.fee * 2;
+    return c.fee; // Årlig, eller ukjent/tom frekvens antas årlig
+  };
+
+  const totalAnnualRevenue = customers.reduce((sum, c) => sum + annualFee(c), 0);
+
+  const tierCounts = { "2990": 0, "4990": 0, "7990": 0, individuell: 0 };
+  customers.forEach((c) => {
+    const rounded = c.fee != null ? Math.round(c.fee) : null;
+    const key = PRICE_TIERS.includes(rounded) ? String(rounded) : "individuell";
+    tierCounts[key]++;
+  });
+
+  // Siste 12 måneder, eldst -> nyest, for en enkel "nye kunder per måned"-graf.
+  const now = new Date();
+  const months = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({ year: d.getFullYear(), month: d.getMonth(), count: 0 });
+  }
+  customers.forEach((c) => {
+    const parsed = parseNorwegianDate(c.date);
+    if (!parsed) return;
+    const bucket = months.find((m) => m.year === parsed.year && m.month === parsed.month);
+    if (bucket) bucket.count++;
+  });
+
+  return {
+    generatedAt: new Date().toISOString(),
+    totalCustomers: customers.length,
+    totalAnnualRevenue,
+    avgAnnualRevenue: customers.length ? totalAnnualRevenue / customers.length : 0,
+    tierCounts,
+    newCustomersByMonth: months.map((m) => ({
+      label: `${NO_MONTHS[m.month]} ${m.year}`,
+      count: m.count,
+    })),
+  };
+}
+
+async function handleStats(request, env, origin) {
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed" }, 405, origin);
+  }
+  if (!env.STATS_SECRET) {
+    return jsonResponse({ error: "Statistikk er ikke konfigurert (mangler STATS_SECRET)" }, 500, origin);
+  }
+  const provided = request.headers.get("X-Stats-Secret") || "";
+  if (!timingSafeEqual(provided, env.STATS_SECRET)) {
+    return jsonResponse({ error: "unauthorized" }, 401, origin);
+  }
+  if (!env.GOOGLE_SHEET_ID || !env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !env.GOOGLE_SERVICE_ACCOUNT_KEY) {
+    return jsonResponse({ error: "Google Sheets er ikke konfigurert" }, 500, origin);
+  }
+  try {
+    const stats = await computeStats(env);
+    return jsonResponse(stats, 200, origin);
+  } catch (e) {
+    return jsonResponse({ error: e.message || "Klarte ikke å beregne statistikk" }, 502, origin);
+  }
+}
+
 async function handleSearch(request, env, origin) {
   if (request.method !== "GET") {
     return jsonResponse({ error: "Method not allowed" }, 405, origin);
@@ -859,6 +966,10 @@ export default {
 
     if (url.pathname === "/search") {
       return handleSearch(request, env, origin);
+    }
+
+    if (url.pathname === "/stats") {
+      return handleStats(request, env, origin);
     }
 
     if (url.pathname === "/slack-interactivity") {

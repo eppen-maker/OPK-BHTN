@@ -112,6 +112,28 @@ npx wrangler pages secret put SITE_PASSWORD --project-name=sirkular-helse-onboar
 Uten `SITE_PASSWORD` viser siden en "ikke konfigurert"-feil i stedet for
 skjemaet. Passordet lagres i en `HttpOnly`-cookie i 30 dager.
 
+## 6b. Dashbord (`/dashboard`)
+
+Enkel statistikk (antall kunder, omsetning, prisfordeling, nye kunder per
+måned) hentet direkte fra "Kunder live". Beskyttet av samme `SITE_PASSWORD`
+som resten av siden (`/dashboard` går gjennom samme passordluke). Tallene
+hentes server-til-server fra Worker-en via `frontend/functions/api/stats.js`
+— selve hemmeligheten (`STATS_SECRET`) sendes aldri til nettleseren.
+
+Krever **samme verdi** satt som secret på begge steder:
+
+```bash
+cd worker
+npx wrangler secret put STATS_SECRET
+
+cd ../frontend
+npx wrangler pages secret put STATS_SECRET --project-name=sirkular-helse-onboarding
+```
+
+Hvis `worker/src/index.js` sin Worker-URL (`STATS_WORKER_URL` i
+`frontend/functions/api/stats.js`) ikke matcher `SLACK_ENDPOINT` i
+`frontend/index.html`, bytt den ut der også.
+
 ## 7. E-post (velkomstmail + ukentlig backup)
 
 Verktøyet sender via rå SMTP (STARTTLS) — funker med de fleste

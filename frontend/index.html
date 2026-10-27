@@ -228,6 +228,33 @@ html, body {
 @media (max-width: 800px) { .opk-deco { display: none; } }
 
 .opk-error-banner { margin-top: 16px; padding: 12px 16px; border-radius: 12px; background: var(--danger-100); color: var(--danger); font-size: 14px; font-weight: 500; border: 1px solid var(--danger); }
+
+/* Dashboard */
+.opk-dash-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+@media (max-width: 720px) { .opk-dash-tiles { grid-template-columns: 1fr; } }
+.opk-dash-tile { background: #fff; border: 1px solid rgba(43,22,32,.08); border-radius: var(--r-xl); padding: 20px 24px; box-shadow: var(--shadow-2); }
+.opk-dash-tile__label { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--fg-2); margin-bottom: 8px; }
+.opk-dash-tile__value { font-size: 32px; font-weight: 800; letter-spacing: -.01em; color: var(--fg-1); }
+.opk-dash-tile__sub { font-size: 13px; color: var(--fg-2); margin-top: 4px; }
+
+.opk-dash-section { margin-bottom: 24px; }
+.opk-dash-section__title { font-size: 15px; font-weight: 700; color: var(--fg-1); margin: 0 0 16px; }
+
+.opk-dash-bar-row { display: grid; grid-template-columns: 110px 1fr 56px; align-items: center; gap: 12px; margin-bottom: 10px; font-size: 13px; }
+.opk-dash-bar-row__label { color: var(--fg-2); font-weight: 600; }
+.opk-dash-bar-track { background: var(--bg-surface-2); border-radius: var(--r-pill); height: 10px; overflow: hidden; }
+.opk-dash-bar-fill { height: 100%; border-radius: var(--r-pill); background: var(--brand-magenta); transition: width var(--dur) var(--ease-std); }
+.opk-dash-bar-row__value { text-align: right; font-weight: 700; color: var(--fg-1); }
+
+.opk-dash-months { display: flex; align-items: flex-end; gap: 6px; height: 140px; padding-top: 12px; }
+.opk-dash-month { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
+.opk-dash-month__bar { width: 100%; max-width: 28px; background: var(--brand-aubergine); border-radius: 4px 4px 0 0; min-height: 2px; }
+.opk-dash-month__count { font-size: 11px; font-weight: 700; color: var(--fg-1); }
+.opk-dash-month__label { font-size: 10px; color: var(--fg-2); writing-mode: vertical-rl; text-orientation: mixed; height: 44px; }
+
+.opk-dash-nav { font-size: 13px; color: var(--fg-2); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.opk-dash-nav:hover { color: var(--brand-magenta); }
+.opk-dash-loading, .opk-dash-error { padding: 40px; text-align: center; color: var(--fg-2); }
 </style>
 </head>
 <body>
@@ -295,10 +322,13 @@ const Brand = ({ step, totalSteps }) => (
     <a className="opk-brand__logo" href="https://bhtn.no">
       <BhtnLogo />
     </a>
-    <div className="opk-brand__crumb">
-      <span className="opk-brand__crumb-tag">⚡️ Onboarding</span>
-      <span className="opk-brand__crumb-sep">·</span>
-      <span className="opk-brand__crumb-step">Steg {step} av {totalSteps}</span>
+    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+      <a className="opk-dash-nav" href="/dashboard">📊 Dashbord</a>
+      <div className="opk-brand__crumb">
+        <span className="opk-brand__crumb-tag">⚡️ Onboarding</span>
+        <span className="opk-brand__crumb-sep">·</span>
+        <span className="opk-brand__crumb-step">Steg {step} av {totalSteps}</span>
+      </div>
     </div>
   </header>
 );
@@ -970,7 +1000,101 @@ function App() {
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+/* ---------- Dashboard ---------- */
+function formatNOKWhole(n) {
+  return "kr " + new Intl.NumberFormat("nb-NO", { maximumFractionDigits: 0 }).format(Math.round(n || 0));
+}
+
+const TIER_LABELS = { "2990": "1–4 ansatte", "4990": "5–9 ansatte", "7990": "10–19 ansatte", individuell: "20+ / individuelt" };
+
+function Dashboard() {
+  const [stats, setStats] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetch("/api/stats")
+      .then(async (res) => {
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        setStats(json);
+      })
+      .catch((e) => setError(e.message || "Ukjent feil"));
+  }, []);
+
+  const maxMonthCount = stats ? Math.max(1, ...stats.newCustomersByMonth.map((m) => m.count)) : 1;
+  const maxTierCount = stats ? Math.max(1, ...Object.values(stats.tierCounts)) : 1;
+
+  return (
+    <div className="opk-shell" data-screen-label="Dashboard">
+      <header className="opk-brand">
+        <a className="opk-brand__logo" href="https://bhtn.no"><BhtnLogo /></a>
+        <a className="opk-dash-nav" href="/">← Tilbake til onboarding</a>
+      </header>
+
+      <section className="opk-hero">
+        <div className="opk-hero__tag">📊 Dashbord</div>
+        <h1 className="opk-hero__title">Litt <em>statistikk</em> om kundene.</h1>
+        <p className="opk-hero__sub">Tall hentet rett fra "Kunder live"-arket.</p>
+      </section>
+
+      {error && <div className="opk-error-banner">Klarte ikke å hente statistikk: {error}</div>}
+
+      {!stats && !error && <div className="opk-dash-loading">Henter tall…</div>}
+
+      {stats && (
+        <React.Fragment>
+          <div className="opk-dash-tiles">
+            <div className="opk-dash-tile">
+              <div className="opk-dash-tile__label">Antall kunder</div>
+              <div className="opk-dash-tile__value">{stats.totalCustomers}</div>
+            </div>
+            <div className="opk-dash-tile">
+              <div className="opk-dash-tile__label">Omsetning (årlig)</div>
+              <div className="opk-dash-tile__value">{formatNOKWhole(stats.totalAnnualRevenue)}</div>
+            </div>
+            <div className="opk-dash-tile">
+              <div className="opk-dash-tile__label">Snitt per kunde</div>
+              <div className="opk-dash-tile__value">{formatNOKWhole(stats.avgAnnualRevenue)}</div>
+              <div className="opk-dash-tile__sub">per år</div>
+            </div>
+          </div>
+
+          <div className="opk-card opk-dash-section">
+            <h2 className="opk-dash-section__title">Prisfordeling</h2>
+            {Object.entries(stats.tierCounts).map(([tier, count]) => (
+              <div className="opk-dash-bar-row" key={tier}>
+                <div className="opk-dash-bar-row__label">{TIER_LABELS[tier] || tier}</div>
+                <div className="opk-dash-bar-track">
+                  <div className="opk-dash-bar-fill" style={{ width: `${(count / maxTierCount) * 100}%` }} />
+                </div>
+                <div className="opk-dash-bar-row__value">{count}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="opk-card opk-dash-section">
+            <h2 className="opk-dash-section__title">Nye kunder, siste 12 måneder</h2>
+            <div className="opk-dash-months">
+              {stats.newCustomersByMonth.map((m) => (
+                <div className="opk-dash-month" key={m.label}>
+                  <div className="opk-dash-month__count">{m.count || ""}</div>
+                  <div className="opk-dash-month__bar" style={{ height: `${(m.count / maxMonthCount) * 100}%` }} />
+                  <div className="opk-dash-month__label">{m.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </React.Fragment>
+      )}
+    </div>
+  );
+}
+
+if (window.location.pathname.replace(/\/+$/, "") === "/dashboard") {
+  ReactDOM.createRoot(document.getElementById("root")).render(<Dashboard />);
+} else {
+  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+}
 </script>
 <script>
   (function () {
