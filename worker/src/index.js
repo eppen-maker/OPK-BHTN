@@ -16,13 +16,53 @@ function base64url(input) {
   return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+// Tolerant mot de vanligste feilene når en Google-nøkkel limes inn som secret:
+// hele JSON-nøkkelfilen limt inn i stedet for bare "private_key"-feltet, eller
+// ekstra omsluttende anførselstegn fra å kopiere ut av en JSON-fil/editor.
+function extractPrivateKeyField(raw) {
+  let value = (raw || "").trim();
+  if (value.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed.private_key) value = parsed.private_key;
+    } catch {
+      // ikke gyldig JSON — behandles som rå PEM-tekst under
+    }
+  }
+  value = value.trim();
+  if (value.length > 1 && value.startsWith('"') && value.endsWith('"')) {
+    value = value.slice(1, -1);
+  }
+  return value;
+}
+
 async function importGooglePrivateKey(pem) {
-  const pemContents = pem
+  const extracted = extractPrivateKeyField(pem);
+  const pemContents = extracted
     .replace(/\\n/g, "\n")
     .replace("-----BEGIN PRIVATE KEY-----", "")
     .replace("-----END PRIVATE KEY-----", "")
     .replace(/\s/g, "");
-  const binaryDer = Uint8Array.from(atob(pemContents), (c) => c.charCodeAt(0));
+  let binaryDer;
+  try {
+    binaryDer = Uint8Array.from(atob(pemContents), (c) => c.charCodeAt(0));
+  } catch (e) {
+    // Ingen av diagnose-feltene under avslører selve nøkkelen, bare formen på den — nyttig for å
+    // se hva som er feil uten å kunne lese secret-verdien direkte (det kan ingen av oss gjøre).
+    const diag = {
+      lengthTotal: extracted.length,
+      hasBeginMarker: extracted.includes("BEGIN PRIVATE KEY"),
+      hasEndMarker: extracted.includes("END PRIVATE KEY"),
+      hasLiteralBackslashN: extracted.includes("\\n"),
+      hasRealNewlines: extracted.includes("\n"),
+      startsWithBrace: extracted.trim().startsWith("{"),
+    };
+    throw new Error(
+      `GOOGLE_SERVICE_ACCOUNT_KEY er ikke gyldig (${e.message}). Diagnose: ${JSON.stringify(diag)}. ` +
+        `Secreten skal være verdien av "private_key"-feltet fra service account-JSON-filen (inkl. ` +
+        "BEGIN/END-linjene), uten omsluttende anførselstegn og uten resten av JSON-filen."
+    );
+  }
   return crypto.subtle.importKey(
     "pkcs8",
     binaryDer.buffer,
