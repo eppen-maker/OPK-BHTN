@@ -1,7 +1,7 @@
 const COOKIE_NAME = "onboarding_auth";
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 dager
 
-function loginPage(showError) {
+function loginPage(showError, redirectTo) {
   return `<!DOCTYPE html>
 <html lang="no">
 <head>
@@ -24,11 +24,21 @@ function loginPage(showError) {
     <h1>Onboarding</h1>
     <p>Skriv inn passordet for å fortsette.</p>
     ${showError ? '<div class="error">Feil passord, prøv igjen.</div>' : ""}
+    <input type="hidden" name="redirect" value="${redirectTo.replace(/&/g, "&amp;").replace(/"/g, "&quot;")}" />
     <input type="password" name="password" placeholder="Passord" autofocus required />
     <button type="submit">Logg inn</button>
   </form>
 </body>
 </html>`;
+}
+
+// Bare relative stier internt på siden ("/dashboard", "/") er gyldige redirect-mål —
+// aldri en full URL, for å unngå at noen kan misbruke feltet til å sende folk et annet sted.
+function safeRedirectPath(value) {
+  if (typeof value === "string" && value.startsWith("/") && !value.startsWith("//")) {
+    return value;
+  }
+  return "/";
 }
 
 export async function onRequest(context) {
@@ -38,13 +48,14 @@ export async function onRequest(context) {
   if (url.pathname === "/_auth" && request.method === "POST") {
     const form = await request.formData();
     const password = form.get("password");
+    const redirectTo = safeRedirectPath(form.get("redirect"));
 
     if (!env.SITE_PASSWORD) {
       return new Response("Siden er ikke konfigurert (mangler SITE_PASSWORD).", { status: 500 });
     }
 
     if (password === env.SITE_PASSWORD) {
-      const headers = new Headers({ Location: "/" });
+      const headers = new Headers({ Location: redirectTo });
       headers.append(
         "Set-Cookie",
         `${COOKIE_NAME}=${encodeURIComponent(env.SITE_PASSWORD)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${MAX_AGE}`
@@ -52,7 +63,7 @@ export async function onRequest(context) {
       return new Response(null, { status: 302, headers });
     }
 
-    return new Response(loginPage(true), { status: 401, headers: { "Content-Type": "text/html; charset=utf-8" } });
+    return new Response(loginPage(true, redirectTo), { status: 401, headers: { "Content-Type": "text/html; charset=utf-8" } });
   }
 
   const cookieHeader = request.headers.get("Cookie") || "";
@@ -64,7 +75,7 @@ export async function onRequest(context) {
   );
 
   if (!env.SITE_PASSWORD || cookies[COOKIE_NAME] !== env.SITE_PASSWORD) {
-    return new Response(loginPage(false), { status: 401, headers: { "Content-Type": "text/html; charset=utf-8" } });
+    return new Response(loginPage(false, url.pathname), { status: 401, headers: { "Content-Type": "text/html; charset=utf-8" } });
   }
 
   return next();
