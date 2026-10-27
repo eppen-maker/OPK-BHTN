@@ -456,6 +456,22 @@ async function computeStats(env) {
     if (bucket) bucket.count++;
   });
 
+  // "dd.mm.yyyy" -> et sorterbart tall. Rader uten gyldig dato havner sist, ikke først.
+  const sortKey = (dateStr) => {
+    const m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec((dateStr || "").trim());
+    return m ? Date.UTC(Number(m[3]), Number(m[2]) - 1, Number(m[1])) : -Infinity;
+  };
+  const customerList = customers
+    .map((c) => ({
+      company: c.company,
+      date: c.date,
+      employees: c.employees,
+      fee: c.fee,
+      annualFee: annualFee(c),
+      frequency: c.frequency || "Årlig",
+    }))
+    .sort((a, b) => sortKey(b.date) - sortKey(a.date));
+
   return {
     generatedAt: new Date().toISOString(),
     totalCustomers: customers.length,
@@ -466,6 +482,7 @@ async function computeStats(env) {
       label: `${NO_MONTHS[m.month]} ${m.year}`,
       count: m.count,
     })),
+    customers: customerList,
   };
 }
 
